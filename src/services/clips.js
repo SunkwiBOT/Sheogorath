@@ -202,6 +202,44 @@ function posterName(message) {
   return name.replace(/\s*[[(][^\])]*[\])]\s*/g, ' ').trim() || message.author.username;
 }
 
+/**
+ * What the poster said about the clip, in their own words, for him to go on.
+ *
+ * Stills miss things — a tank in the second before it blows up, a voice saying
+ * what just happened — and the person who clipped it knows. They tend to say it
+ * in a message of its own just before the upload ("Drill Time", then the clip),
+ * or in the file's name when they gave it one ("Fob_takedown.mp4"); a recorder's
+ * automatic name ("Clip_-_10272026_82335_AM.mp4") says nothing and is left out.
+ * Mentions come through as names, so "<@…> I feel like I pulled a you" reads.
+ */
+async function postedWith(owner, attachment) {
+  const words = [];
+  const textOf = (m) => (m.content || '')
+    .replace(/<@!?(\d+)>/g, (_, id) => {
+      const member = m.mentions?.members?.get(id);
+      const user = m.mentions?.users?.get(id);
+      return member ? posterName({ member, author: user || member.user }) : user?.globalName || user?.username || '';
+    })
+    .replace(/<@&\d+>|<#\d+>/g, '')
+    .replace(/<a?:(\w+):\d+>/g, '$1')
+    .replace(/https?:\/\/\S+/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const before = await owner.channel?.messages?.fetch({ before: owner.id, limit: 3 }).catch(() => null);
+  const lead = before?.find((m) => m.author.id === owner.author.id
+    && owner.createdTimestamp - m.createdTimestamp < 2 * 60 * 1000
+    && !videoAttachment(m) && textOf(m));
+  if (lead) words.push(textOf(lead));
+  if (textOf(owner)) words.push(textOf(owner));
+
+  const base = path.basename(attachment?.name || '', path.extname(attachment?.name || ''));
+  if (/[a-z]{3}/i.test(base) && !/^(clip|video|vid|img|replay|recording|screen|untitled|sheogorath)\b/i.test(base.replace(/[_-]+/g, ' '))) {
+    words.push(`file named ${base.replace(/[_-]+/g, ' ').trim()}`);
+  }
+  return words.join(' / ').slice(0, 300);
+}
+
 // --- One at a time ---------------------------------------------------------
 
 let chain = Promise.resolve();
@@ -243,6 +281,8 @@ async function make({ clip, owner }, kind, { by = null } = {}) {
 
       const { file, content, name } = await KINDS[kind].service().make({
         source, info, dir,
+        guildId: clip.guildId,
+        said: await postedWith(owner, clip === owner ? attachment : null).catch(() => ''),
         poster: posterName(owner),
         posterId: owner.author.id,
         by,
@@ -317,4 +357,4 @@ async function fromMenu(interaction, kind) {
   }
 }
 
-module.exports = { handleClipMessage, fromMenu, locate, make, run, probe, encode, videoAttachment };
+module.exports = { handleClipMessage, fromMenu, locate, make, run, probe, encode, videoAttachment, postedWith };

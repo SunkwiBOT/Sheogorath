@@ -210,7 +210,7 @@ async function extractMemoryFromMessage(username, message) {
  * @param {Array<{caption: string, jpeg: Buffer}>} images
  * @returns {Promise<string>}
  */
-async function getAIResponseWithImages(prompt, images, { rawSystemPrompt, maxTokens = 600, temperature = 0.9 } = {}) {
+async function getAIResponseWithImages(prompt, images, { rawSystemPrompt, maxTokens = 600, temperature = 0.9, model = 'grok-4.3', timeoutMs = 120000 } = {}) {
   const content = [];
   for (const { caption, jpeg } of images) {
     content.push({ type: 'text', text: caption });
@@ -221,7 +221,7 @@ async function getAIResponseWithImages(prompt, images, { rawSystemPrompt, maxTok
   const response = await httpsPost(
     GROK_API_URL,
     {
-      model: 'grok-4.3',
+      model,
       messages: [
         { role: 'system', content: rawSystemPrompt },
         { role: 'user', content },
@@ -230,7 +230,7 @@ async function getAIResponseWithImages(prompt, images, { rawSystemPrompt, maxTok
       temperature,
     },
     { Authorization: `Bearer ${process.env.GROK_API_KEY}` },
-    120000
+    timeoutMs
   );
   if (response.status !== 200) throw new Error(`Grok API Error: ${response.status} - ${JSON.stringify(response.data).slice(0, 300)}`);
   return response.data.choices[0].message.content.trim();
