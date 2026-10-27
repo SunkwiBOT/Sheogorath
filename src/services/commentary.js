@@ -50,6 +50,19 @@ function wordBudget(duration) {
  */
 const CHARS_PER_WORD = 6;
 
+/**
+ * The model that watches the stills and writes the jokes.
+ *
+ * Tried against grok-4.3 on 14 clips from the clips channel (2026-10-27):
+ * grok-4.5 read what happened right more often (4.3 invented a fall from a
+ * tank, took a rocket for a rifle twice, had a driver bail who didn't) and
+ * wrote sharper lines, for about 3 cents a clip against 1, and 55 seconds on
+ * average against 20, 89 at most. It thinks before it answers, hence the
+ * longer wait; xAI does not count that thinking against max_tokens.
+ */
+const MODEL = 'grok-4.5';
+const MODEL_TIMEOUT_MS = 180000;
+
 /** Characters he may say over one clip, so one long clip cannot spend a day. */
 const MAX_CHARACTERS = 700;
 
@@ -252,7 +265,8 @@ function brief({ poster, game, about, duration, words, running = '', said = '' }
       + '"Kill confirmed.") is not a joke, so cut it. Fewer, better lines: two to five '
       + 'for most clips, each a whole spoken sentence, and one deadpan beat of one to three words dropped right '
       + 'as the moment lands, after a gap. A comparison from your own world (cheese, butterflies, bored daedra, '
-      + 'Haskill) is welcome now and then, never the same one twice.\n\n'
+      + 'Haskill) is welcome now and then, never the same one twice. Never "like it owes him money", "like the '
+      + 'sky owes him rent" or any other "owes" comparison: you have worn that one out.\n\n'
       + 'Commentary you have already done, with what was on screen. Match the voice; never reuse these lines '
       + 'or copy their shapes:\n'
       + '- Stopped halfway up a ladder to loot a body, then fell off: "Stops to strip a corpse mid-ascent." '
@@ -396,7 +410,7 @@ async function make({ source, info, dir, guildId, posterId, poster, said, game, 
   // jokes first, and the JSON fails to parse if it is cut off.
   const raw = await getAIResponseWithImages(prompt, shots.map(({ at, jpeg }) => ({
     caption: `Still at ${at.toFixed(1)}s:`, jpeg,
-  })), { rawSystemPrompt: system, maxTokens: 1500 });
+  })), { rawSystemPrompt: system, maxTokens: 1500, model: MODEL, timeoutMs: MODEL_TIMEOUT_MS });
 
   const script = parseScript(raw, info.duration, cap);
   console.log(`[Commentary] "${script.title}": ${script.lines.length} line(s), ${script.chars} characters`
