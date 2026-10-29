@@ -16,7 +16,9 @@ const { Resvg } = require('@resvg/resvg-js');
 
 const W = 440;
 const H = 220;
-const PAD = { top: 14, right: 78, bottom: 26, left: 50 };
+// The side gutters fit DejaVu Sans, the server's font and the widest of the
+// three: "$1.25M" on the left, "$330,410" on the right.
+const PAD = { top: 14, right: 88, bottom: 26, left: 58 };
 const SCALE = 3;
 const INK = { surface: '#1a1a19', primary: '#f0efec', muted: '#898781', grid: '#2c2c2a' };
 const FONT = "'DejaVu Sans', 'Liberation Sans', 'Segoe UI', Arial, sans-serif";
