@@ -16,7 +16,8 @@
       "events",
       "ledger",
       "clips",
-      "drops"
+      "drops",
+      "wardogsGold"
     ],
     "channels": {
       "music": "534553333034123289",
@@ -85,6 +86,10 @@
       "results": {
         "channel": "1554131166079225866"
       }
+    },
+    "wardogsGold": {
+      "channel": "380486887309180929",
+      "pingRole": "1554256264597348443"
     },
     "gameNews": {
       "channel": "991703618849878026",

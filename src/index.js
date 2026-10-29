@@ -46,6 +46,7 @@ const { scheduleStreamWatch } = require('./services/twitch');
 const { scheduleVideoWatch } = require('./services/youtube');
 const { scheduleUfcEvents } = require('./services/ufc');
 const { scheduleGameNews } = require('./services/gameNews');
+const { scheduleWardogsGold } = require('./services/wardogsGold');
 const { schedulePresserWatch } = require('./services/ufcPresser');
 const { schedulePickem, isPickemButton, handleButton: handlePickemButton } = require('./services/pickem');
 const { scheduleUfcResults } = require('./services/ufcResults');
@@ -211,6 +212,13 @@ client.once(Events.ClientReady, async () => {
     scheduleGameNews(client);
   } catch (err) {
     console.error('[GameNews] Failed to schedule game news:', err?.message || err);
+  }
+
+  // The WARDOGS gold bar price, posted each day it moves.
+  try {
+    scheduleWardogsGold(client);
+  } catch (err) {
+    console.error('[WardogsGold] Failed to schedule the gold price:', err?.message || err);
   }
 
   // Weekly UFC card events. Same isolation: ESPN being down is not a boot failure.

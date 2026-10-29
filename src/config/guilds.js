@@ -43,6 +43,7 @@ const FEATURES = [
   'events',       // /event, events added by telling him, and reminders before each one
   'ledger',       // the group's book: /bet, /ledger, rulings and kept quotes
   'wardogs',      // /wardogs: WARDOGS stats by Steam sign-in (needs WARDOGS_PUBLIC_URL)
+  'wardogsGold',  // /gold, and the WARDOGS gold bar price posted each day it moves (needs a wardogsGold block)
   'clips',        // his commentary over clips, and the Wabbajack (needs ffmpeg; commentary needs ELEVENLABS_*)
   'drops',        // /drops, and Twitch and Kick drops posted for the games we play (needs a gameNews block)
 ];
@@ -359,6 +360,13 @@ function normalizeGuild(id, raw) {
       maxTotal: Number(raw.voiceRooms.maxTotal) > 0 ? Number(raw.voiceRooms.maxTotal) : 10,
       namePattern: typeof raw.voiceRooms.namePattern === 'string' ? raw.voiceRooms.namePattern : null,
     } : null,
+    // The WARDOGS gold bar price (services/wardogsGold.js), where the
+    // `wardogsGold` feature is on: posted in `channel` on each day it moves,
+    // pinging `pingRole`. Unset channel, only /gold works.
+    wardogsGold: {
+      channel: SNOWFLAKE.test(String(raw.wardogsGold?.channel || '')) ? raw.wardogsGold.channel : null,
+      pingRole: SNOWFLAKE.test(String(raw.wardogsGold?.pingRole || '')) ? raw.wardogsGold.pingRole : null,
+    },
     // Gameplay clips (services/clips.js). Every clip posted in `channel` gets
     // his commentary on its own unless `commentary` is false; the Apps menu
     // works on clips anywhere. `game` and `about` tell him what he is watching

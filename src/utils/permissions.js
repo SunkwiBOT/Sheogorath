@@ -41,6 +41,7 @@ const COMMAND_FEATURES = {
   ledger: 'ledger',
 
   wardogs: 'wardogs',
+  gold: 'wardogsGold',
   // The message menu's commands, which Discord names by their labels.
   'Keep in the Ledger': 'ledger',
   'Mad God commentary': 'clips',
