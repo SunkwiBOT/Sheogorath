@@ -4,18 +4,12 @@ const path = require('path');
 const { promisify } = require('util');
 const execFile = promisify(require('child_process').execFile);
 const { mirrorLinks } = require('./mediaMirror');
-const { notifyOwner } = require('../utils/errorNotify');
 
 // A Netscape-format cookies export from a browser logged in to Reddit. Since
 // mid-October 2026 Reddit only serves the post data yt-dlp reads to logged-in
 // sessions (yt-dlp issue #17856), so without this every download fails.
 // yt-dlp writes refreshed cookies back into the file after each run.
 const COOKIES_FILE = path.join(__dirname, '..', '..', 'www.reddit.com_cookies.txt');
-
-// The owner hears about a missing or expired login at most once a day, and
-// again sooner if a download works in between and then it breaks.
-const LOGIN_NOTICE_MS = 24 * 60 * 60 * 1000;
-let loginNoticeAt = 0;
 
 // Post links, in any of Reddit's hosts (www, old, new, sh, ...). The subdomain
 // has to end in a dot, so vxreddit/rxddit — which people use to get a working
@@ -122,7 +116,6 @@ async function downloadVideo(url, dlDir) {
 
   try {
     await execFile('yt-dlp', args, { timeout: 90000 });
-    loginNoticeAt = 0;
     return '❌ Nothing was downloaded from that Reddit link.';
   } catch (err) {
     const detail = String(err.stderr || err.message);
@@ -132,26 +125,18 @@ async function downloadVideo(url, dlDir) {
     console.error('[Reddit] yt-dlp failed:', detail.trim().split('\n').pop());
     // Reddit refused the post data for want of a login. That happens before
     // yt-dlp can tell a video from a text post, so a reply here would land on
-    // every Reddit link. Stay quiet in the channel and tell the owner instead.
-    // With a login loaded, yt-dlp words it as the IP being unable to access the
-    // API; an expired login is the likely cause of that.
+    // every Reddit link; stay quiet, and leave the reason in the log only (the
+    // owner asked not to be DMed about it). With a login loaded, yt-dlp words
+    // it as the IP being unable to access the API; an expired login is the
+    // likely cause of that.
     if (/Account authentication is required|unable to access the Reddit API/i.test(detail)) {
-      warnOwnerAboutLogin(haveCookies);
+      console.warn(haveCookies
+        ? `[Reddit] The login in ${path.basename(COOKIES_FILE)} has probably expired; export it again.`
+        : `[Reddit] Reddit needs a logged-in ${path.basename(COOKIES_FILE)} in the bot folder.`);
       return null;
     }
     return '❌ Reddit download failed — the post may be private, removed, or yt-dlp needs updating.';
   }
-}
-
-function warnOwnerAboutLogin(haveCookies) {
-  if (Date.now() - loginNoticeAt < LOGIN_NOTICE_MS) return;
-  loginNoticeAt = Date.now();
-  const file = `\`${path.basename(COOKIES_FILE)}\``;
-  notifyOwner(haveCookies
-    ? `🔑 Reddit videos aren't downloading even with ${file} — the Reddit login in it has probably expired. ` +
-      'Export cookies again from a browser logged in to Reddit and replace the file in the bot folder.'
-    : '🔑 Reddit videos aren\'t downloading: Reddit now only gives post data to logged-in accounts. ' +
-      `Export cookies from a browser logged in to Reddit and save them as ${file} in the bot folder.`);
 }
 
 module.exports = { handleRedditLinks };
