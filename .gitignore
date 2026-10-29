@@ -217,6 +217,7 @@ discord-bot/*.log
 *~instagram-cookies.txt
 www.instagram.com_cookies.txt
 x.com_cookies.txt
+www.reddit.com_cookies.txt
 data/tts-usage.json
 logs/
 
