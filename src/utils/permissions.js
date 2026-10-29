@@ -42,6 +42,8 @@ const COMMAND_FEATURES = {
 
   wardogs: 'wardogs',
   gold: 'wardogsGold',
+
+  vclog: 'voiceLog',
   // The message menu's commands, which Discord names by their labels.
   'Keep in the Ledger': 'ledger',
   'Mad God commentary': 'clips',
@@ -63,6 +65,12 @@ const MUSIC_COMMANDS = new Set(
  * reach by proxy.
  */
 const ADMIN_COMMANDS = new Set(['sheo']);
+
+/**
+ * Commands for staff and up. `/vclog` reads back who was in voice and when,
+ * which is the staff's business and not the room's.
+ */
+const STAFF_COMMANDS = new Set(['vclog']);
 
 /** Subcommands that need full admin even though their parent command doesn't. */
 const ADMIN_SUBCOMMANDS = {
@@ -148,6 +156,9 @@ function commandDenialReason(commandName, guildId, member, subcommand = null) {
   if (ADMIN_COMMANDS.has(commandName) && !isAdmin(member)) {
     return `❌ \`/${commandName}\` is Owners-only.`;
   }
+  if (STAFF_COMMANDS.has(commandName) && !isStaff(member)) {
+    return `❌ \`/${commandName}\` is staff-only.`;
+  }
   if (subcommand && ADMIN_SUBCOMMANDS[commandName]?.has(subcommand) && !isAdmin(member)) {
     const why = ADMIN_SUBCOMMAND_REASONS[`${commandName} ${subcommand}`]
       || 'it is not bounded the way the rest of the staff commands are';
@@ -197,6 +208,7 @@ module.exports = {
   COMMAND_FEATURES,
   MUSIC_COMMANDS,
   ADMIN_COMMANDS,
+  STAFF_COMMANDS,
   ADMIN_SUBCOMMANDS,
   musicDenialReason,
   commandDenialReason,

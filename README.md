@@ -178,6 +178,18 @@ For a game that isn't out yet: a post with the terms (keep it to the test group)
 - `/automod words <on|off> [words]` - Toggle the blocked words filter. Pass `words` as a comma-separated list to set the terms it blocks; omit it to keep the current list. The filter stays off until the server has at least one term.
 - `/automod antispam <on|off>` - Toggle the mention spam filter
 
+### 🎧 Voice log
+*Requires the `voiceLog` feature. Staff only (the `staff` or `admin` role, or Administrator).*
+
+- `/vclog now` - Who is in voice right now, by channel, and since when
+- `/vclog recent [hours]` - Every join, leave and move in the last 24 hours (up to a week), by day
+- `/vclog user <user> [days]` - One person's time in voice: each stay, the channels they went through, and the total (default 7 days, up to 90)
+- `/vclog top [days]` - Everyone ranked by time in voice
+
+Every join, leave and move between voice channels is written to `data/voice-log/<guildId>.jsonl` and kept for `voiceLog.keepDays` (default 90). Mutes, deafens, streams and cameras are not logged, and neither are bots. With `voiceLog.channel` set, each one is also posted there as it happens, a few seconds' worth to a message, so a room emptying at the end of the night is one post. Replies to `/vclog` are seen only by whoever asked. Times show in each reader's own time zone.
+
+Who is in voice now, and since when, is kept in `data/voice-log/open.json` so a restart doesn't lose it. Discord says nothing about what happened while the bot was down, so at startup it compares: anyone who left in the meantime is logged as leaving at the last time the bot was known to be running (it notes that every five minutes), and anyone who joined is logged as joining at startup. Both are marked approximate, shown with a `~`.
+
 ### 📊 Utility
 - `/health` - Check bot health and service status
 
@@ -392,7 +404,7 @@ One entry per Discord server, holding that guild's `features` list, channel IDs,
 
 `channels.modApprovals` is where Sheogorath posts what he wants permission to do and what he did on his own; it falls back to `channels.commandLog` when unset, so a guild with one private staff channel doesn't need a second.
 
-Available features: `ai`, `music`, `moderation`, `automod`, `textImageMod`, `instagram`, `twitter`, `tiktok`, `reddit`, `pickem`, `events`, `ledger`, `wardogs`, `clips`, `drops`.
+Available features: `ai`, `music`, `moderation`, `automod`, `textImageMod`, `instagram`, `twitter`, `tiktok`, `reddit`, `pickem`, `events`, `ledger`, `wardogs`, `clips`, `drops`, `voiceLog`.
 
 `timeZone` (an IANA name, default `America/Chicago`) is where a guild's people live: what "Friday 8pm" means in `/event` and in chat, and the clock Sheogorath is told the time by.
 

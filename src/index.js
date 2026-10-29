@@ -54,6 +54,7 @@ const { scheduleUfcReminders } = require('./services/ufcReminders');
 const { scheduleEvents } = require('./services/events');
 const { scheduleLedger, isLedgerButton, handleButton: handleLedgerButton } = require('./services/ledger');
 const { onVoiceStateUpdate: onVoiceRoomUpdate, sweepOrphans } = require('./services/voicerooms');
+const { onVoiceStateUpdate: onVoiceLogUpdate, startVoiceLog } = require('./services/voiceLog');
 const { startControlApi } = require('./api/server');
 const { getGuildConfig, guildIds, hasFeature, channelId, aiOffLimits } = require('./config/guilds');
 const {
@@ -190,6 +191,10 @@ client.once(Events.ClientReady, async () => {
       console.error(`[Commands] Error registering in ${guild.name}:`, error);
     }
   }
+
+  // Who was in voice: log what changed while we were down, then follow it live.
+  startVoiceLog(client).catch(err =>
+    console.error('[VoiceLog] Startup failed:', err?.message || err));
 
   // Clear away voice rooms that emptied while we were down.
   try {
@@ -811,6 +816,16 @@ setInterval(async () => {
     lastInteractionTime = Date.now();
   }
 }, 60 * 1000); // Check every minute
+
+// The voice log. Registered before the voice rooms handler: an empty room is
+// deleted the moment its last person leaves, and the log wants its name first.
+client.on(Events.VoiceStateUpdate, (oldState, newState) => {
+  try {
+    onVoiceLogUpdate(oldState, newState);
+  } catch (err) {
+    console.error('[VoiceLog] Voice state handling failed:', err?.message || err);
+  }
+});
 
 // Registered separately from the music handler below rather than folded into
 // it: they share an event and nothing else, and a fault in one must not stop

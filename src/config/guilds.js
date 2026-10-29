@@ -46,6 +46,7 @@ const FEATURES = [
   'wardogsGold',  // /gold, and the WARDOGS gold bar price posted each day it moves (needs a wardogsGold block)
   'clips',        // his commentary over clips, and the Wabbajack (needs ffmpeg; commentary needs ELEVENLABS_*)
   'drops',        // /drops, and Twitch and Kick drops posted for the games we play (needs a gameNews block)
+  'voiceLog',     // who joined, left and moved between voice channels, and when; /vclog (staff)
 ];
 
 let cache = null;
@@ -366,6 +367,13 @@ function normalizeGuild(id, raw) {
     wardogsGold: {
       channel: SNOWFLAKE.test(String(raw.wardogsGold?.channel || '')) ? raw.wardogsGold.channel : null,
       pingRole: SNOWFLAKE.test(String(raw.wardogsGold?.pingRole || '')) ? raw.wardogsGold.pingRole : null,
+    },
+    // Voice log (services/voiceLog.js), where the `voiceLog` feature is on.
+    // Every join, leave and move is kept for `keepDays` and read back with
+    // /vclog; `channel`, when set, also gets each one posted as it happens.
+    voiceLog: {
+      channel: SNOWFLAKE.test(String(raw.voiceLog?.channel || '')) ? raw.voiceLog.channel : null,
+      keepDays: Number.isInteger(raw.voiceLog?.keepDays) && raw.voiceLog.keepDays > 0 ? raw.voiceLog.keepDays : 90,
     },
     // Gameplay clips (services/clips.js). Every clip posted in `channel` gets
     // his commentary on its own unless `commentary` is false; the Apps menu

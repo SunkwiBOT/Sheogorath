@@ -17,7 +17,8 @@
       "ledger",
       "clips",
       "drops",
-      "wardogsGold"
+      "wardogsGold",
+      "voiceLog"
     ],
     "channels": {
       "music": "534553333034123289",
@@ -211,7 +212,8 @@
       "tiktok",
       "reddit",
       "textImageMod",
-      "automod"
+      "automod",
+      "voiceLog"
     ],
     "channels": {
       "rules": "1547235338752106618",
@@ -333,7 +335,8 @@
     "features": [
       "ai",
       "moderation",
-      "events"
+      "events",
+      "voiceLog"
     ],
     "channels": {
       "rules": "1560045622093152336",
