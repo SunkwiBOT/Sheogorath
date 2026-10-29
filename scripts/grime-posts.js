@@ -35,7 +35,7 @@ const RULES = {
     ['4. No spam, no advertising',
       'No unsolicited DMs and no dropping invite links. Talking about other games you like is fine.'],
     ['5. Bugs go in the bug reports',
-      'Testers: one post per bug in the bug-reports forum, with what happened, what you expected and which build you have.'],
+      'Testers: one post per bug in the playtest-bugs forum, with what happened, what you expected and which build you have.'],
     ['6. Sheogorath is a bot',
       'He answers to his name and speaks unprompted in <#CHAN_HELP>. He does not read the testers\' channels. Anything that matters goes to a **@Moderator** or a **@Developer**, not to him.'],
     ['7. Discord\'s own rules apply',

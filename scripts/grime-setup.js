@@ -103,6 +103,11 @@ const TREE = [
       { id: 'downloads', name: 'downloads', locked: true,
         topic: 'Get the newest build here. Everything in PLAYTEST is under the NDA.' },
       { id: 'playtestChat', name: 'playtest-chat', topic: 'Testers talk. Under the NDA, like everything in PLAYTEST.' },
+      // The testers' own bug forum. #bug-reports in TEAM is the team's, and has an
+      // automation on it, so the two stay apart.
+      { id: 'testerBugs', name: 'playtest-bugs', type: ChannelType.GuildForum, alsoSee: ['audio'],
+        topic: 'One post per bug: what happened, what you expected, and your build. Attach the crash log if there is one.',
+        tags: [['Bug', '🐛'], ['Crash', '💥'], ['Multiplayer', '🌐'], ['Visual', '🎨'], ['Fixed', '✅']] },
       { id: 'feedback', name: 'feedback', topic: 'What you liked, what you did not, and what you wish it had.' },
       // #bug-reports' twin, but the testers' to post in.
       { id: 'suggestions', name: 'suggestions', type: ChannelType.GuildForum, alsoSee: ['audio'],
