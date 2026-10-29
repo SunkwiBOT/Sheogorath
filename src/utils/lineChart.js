@@ -45,14 +45,18 @@ function niceStep(max) {
 }
 
 /**
- * @param {{label: string, value: number}[]} points oldest first, two or more
+ * @param {{value: number, label?: string, t?: number}[]} points oldest first,
+ *   two or more. When every point has a time `t` (ms), they are spaced by it,
+ *   so a stretch with no readings shows as a gap in time, not a squeeze.
  * @param {object} opts
  * @param {string} opts.color the line's color
  * @param {(n: number) => string} opts.tick y-axis labels, kept short ($500K)
  * @param {(n: number) => string} opts.end the label beside the last point, in full
+ * @param {{t: number, label: string}[]} [opts.ticks] x-axis labels at given
+ *   times, for timed points. Without them every few points' `label` is shown.
  * @returns {Buffer} PNG
  */
-function renderLineChart(points, { color, tick, end }) {
+function renderLineChart(points, { color, tick, end, ticks = null }) {
   if (!Array.isArray(points) || points.length < 2) throw new Error('A line needs two points');
 
   const max = Math.max(...points.map((p) => p.value)) || 1;
@@ -60,7 +64,11 @@ function renderLineChart(points, { color, tick, end }) {
   const top = Math.ceil(max / step) * step;
   const plotW = W - PAD.left - PAD.right;
   const plotH = H - PAD.top - PAD.bottom;
-  const x = (i) => r1(PAD.left + (i / (points.length - 1)) * plotW);
+  const timed = points.every((p) => Number.isFinite(p.t));
+  const t0 = timed ? points[0].t : 0;
+  const span = timed ? (points[points.length - 1].t - t0) || 1 : 1;
+  const xt = (t) => r1(PAD.left + ((t - t0) / span) * plotW);
+  const x = (i) => (timed ? xt(points[i].t) : r1(PAD.left + (i / (points.length - 1)) * plotW));
   const y = (v) => r1(PAD.top + plotH - (v / top) * plotH);
   const base = y(0);
 
@@ -72,11 +80,16 @@ function renderLineChart(points, { color, tick, end }) {
     parts.push(`<text x="${PAD.left - 7}" y="${r1(y(v) + 3.8)}" text-anchor="end" font-size="11" fill="${INK.muted}">${esc(tick(v))}</text>`);
   }
 
-  // Dates, counted back from the last point so the latest day is always named.
-  // Seven fit across: a week gets every day.
-  const every = Math.max(1, Math.ceil(points.length / 7));
-  for (let i = points.length - 1; i >= 0; i -= every) {
-    parts.push(`<text x="${x(i)}" y="${base + 17}" text-anchor="middle" font-size="11" fill="${INK.muted}">${esc(points[i].label)}</text>`);
+  const label = (lx, text) => parts.push(`<text x="${lx}" y="${base + 17}" text-anchor="middle" font-size="11" fill="${INK.muted}">${esc(text)}</text>`);
+  if (timed && Array.isArray(ticks)) {
+    for (const k of ticks) {
+      if (k.t >= t0 && k.t <= t0 + span) label(xt(k.t), k.label);
+    }
+  } else {
+    // Dates, counted back from the last point so the latest day is always
+    // named. Seven fit across: a week gets every day.
+    const every = Math.max(1, Math.ceil(points.length / 7));
+    for (let i = points.length - 1; i >= 0; i -= every) label(x(i), points[i].label);
   }
 
   const line = points.map((p, i) => `${x(i)},${y(p.value)}`).join(' L');
