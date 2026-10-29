@@ -103,10 +103,11 @@ const TREE = [
       { id: 'downloads', name: 'downloads', locked: true,
         topic: 'Get the newest build here. Everything in PLAYTEST is under the NDA.' },
       { id: 'playtestChat', name: 'playtest-chat', topic: 'Testers talk. Under the NDA, like everything in PLAYTEST.' },
-      { id: 'bugs', name: 'bug-reports', type: ChannelType.GuildForum,
-        topic: 'One post per bug: what happened, what you expected, and your build. Attach the crash log if there is one.',
-        tags: [['Bug', '🐛'], ['Crash', '💥'], ['Multiplayer', '🌐'], ['Visual', '🎨'], ['Fixed', '✅']] },
       { id: 'feedback', name: 'feedback', topic: 'What you liked, what you did not, and what you wish it had.' },
+      // #bug-reports' twin, but the testers' to post in.
+      { id: 'suggestions', name: 'suggestions', type: ChannelType.GuildForum, alsoSee: ['audio'],
+        topic: 'One post per idea: what you would add or change, and why. Search first, and if someone has already suggested it, add to their post.',
+        tags: [['Gameplay', '🎮'], ['Visual', '🎨'], ['Audio', '🔊'], ['Multiplayer', '🌐'], ['Planned', '📌'], ['Added', '✅']] },
       { id: 'playtestVoice', name: 'Playtest', type: ChannelType.GuildVoice },
     ] },
   { category: 'VOICE', access: 'public', channels: [
@@ -114,6 +115,10 @@ const TREE = [
     ] },
   { category: 'TEAM', access: 'team', channels: [
       { id: 'teamChat', name: 'team-chat', alsoSee: ['audio'], topic: 'The team.' },
+      // Moved here from PLAYTEST, so the testers no longer see it.
+      { id: 'bugs', name: 'bug-reports', type: ChannelType.GuildForum, alsoSee: ['audio'],
+        topic: 'One post per bug: what happened, what you expected, and your build. Attach the crash log if there is one.',
+        tags: [['Bug', '🐛'], ['Crash', '💥'], ['Multiplayer', '🌐'], ['Visual', '🎨'], ['Fixed', '✅']] },
       { id: 'commandLog', name: 'command-log', topic: 'Privileged commands, and what Sheogorath asks permission to do.' },
       // Discord's own notices for moderators, which a Community server must have a
       // channel for. Kept apart from command-log, which the team acts on.
