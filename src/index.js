@@ -125,6 +125,10 @@ const client = new Client({
   ],
   // DM channels arrive uncached; without this their messages never fire.
   partials: [Partials.Channel],
+  // discord.js gives up on a request after 15s. Leviathan uploads over
+  // Starlink, where a clip near the upload cap can take longer than that, so
+  // every retry was aborted and the clip never posted.
+  rest: { timeout: 120000 },
 });
 
 client.commands = new Map();
