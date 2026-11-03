@@ -31,6 +31,7 @@ const TAG_LINES = {
   kick:       '  [ACTION:kick:userId:reason]             — Kick a user from the server',
   ban:        '  [ACTION:ban:userId:deleteDays:reason]   — Ban a user',
   dm:         '  [ACTION:dm:userId:what to say]          — Send someone a private message (it is signed with who asked)',
+  nudge:      '  [ACTION:nudge:userId:times:minutes:what to say] — Keep messaging someone until they turn up: up to 5 DMs, 1-30 minutes apart; stops by itself when they speak, join voice or answer',
   say:        '  [ACTION:say:#channel:what to say]       — Speak in another channel (THIS one needs no tag — just talk)',
   title:      '  [ACTION:title:userId:the title]         — Hang a title on someone (a cosmetic role, no powers)',
   untitle:    '  [ACTION:untitle:userId:the title]       — Take one of your titles back off someone',
@@ -99,7 +100,8 @@ visits. Nobody is punished by a note, so you never need to hold back on those.`.
   const consequences = [];
 
   if (can('kick') || can('ban')) {
-    consequences.push(`  * Kicks and bans always go to ${an(approver)} for approval, however sure you are.`);
+    consequences.push(`  * Kicks and bans happen at once when ${an(admin)} asks for them. Asked by anyone else, `
+      + `${askable ? `they go to ${an(approver)} for approval, however sure you are` : 'they do not happen at all'}.`);
   }
   // Named one by one: a guild granted deletions and not warnings must not be
   // handed a sentence that mentions warnings, or he will go on offering them.

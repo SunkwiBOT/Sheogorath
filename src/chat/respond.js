@@ -70,6 +70,26 @@ const LOOKUP_SUFFIX =
   + 'most two links to the best sources. If you cannot find it, say so plainly rather than inventing '
   + 'a source. Stay in character — the facts are the point, but it is still you saying them.';
 
+/**
+ * A question about the world right now, or a plain "look it up". Without
+ * search he answered news with "my knowledge cutoff is 2021" (the local voice)
+ * or with a confident guess (Grok). Bought per question, like the picture
+ * lookup: a search costs more than a reply.
+ */
+const WEB_PATTERN = /\b(news|headlines?|latest|yesterday|last night|this (?:week|weekend|morning)|what happened|who won|final score|odds|price of|stock price|weather|forecast|look (?:it |that |this |him |her |them )?up|search (?:for|up)|google|find (?:me )?(?:a |an |the |some )?(?:pic|pics|picture|photo|image|article|link|video|clip|source)s?|crash(?:ed)?|died|killed|arrested|shooting|election|announced|released|patch notes|current events|going on in the world)\b/i;
+
+function wantsWeb(text) {
+  return WEB_PATTERN.test(text || '');
+}
+
+/** The extra instruction for a turn that wants the web. */
+const WEB_SUFFIX =
+  '\n\nTHIS TURN the question is about something current, or something to look up, and you have web '
+  + 'search. Search before you answer, and answer from what you found, not from memory: what happened, '
+  + 'when, and who, in plain words. Give one or two links to the best sources. Asked for a picture, link '
+  + 'one you found, a direct image link where you can get one, since those show in Discord. Say plainly '
+  + 'if you could not find it. Never mention a knowledge cutoff: you just searched. Stay in character.';
+
 /** In place of the pictures, when Grok would not take them. */
 const UNOPENED =
   '[They attached picture(s) that would not open for you. Say you could not look, rather than '
@@ -269,6 +289,10 @@ async function respond(turn, surface) {
       console.warn('[Context] Skipped:', err?.message || err);
     }
   }
+  // "What happened yesterday" in a chat is about the chat, and the deep
+  // transcript already answers it.
+  const web = !lookup && !deepRecall && wantsWeb(text);
+  if (web) console.log(`[Search] Web search for ${username}`);
 
   // Order is weight.
   //
@@ -310,11 +334,11 @@ async function respond(turn, surface) {
 
   const askGrok = (extraSuffix = '') => getAIResponseWithHistory(messages, maxTokens, {
     systemBase,
-    systemSuffix: systemSuffix + (lookup ? LOOKUP_SUFFIX : '') + extraSuffix,
+    systemSuffix: systemSuffix + (lookup ? LOOKUP_SUFFIX : '') + (web ? WEB_SUFFIX : '') + extraSuffix,
     // Which server he is standing in, if he is standing in one. Decides which
     // powers he is told he has and what that place calls the people above him.
     guildId,
-    search: lookup,
+    search: lookup || web,
   });
 
   // The local voice speaks when the surface allows it and the turn passes
@@ -329,7 +353,8 @@ async function respond(turn, surface) {
     replyBlock: blocks.reply || '',
     chatBlock: blocks.chat || '',
     username,
-    allowLocal: localVoice && !deepRecall,
+    // The local voice cannot search, so a web question always goes to Grok.
+    allowLocal: localVoice && !deepRecall && !web,
     hasImages: images.length > 0,
     where: `${spaceId}/${roomId}`,
     askGrok: () => askGrok(extraSuffix),
@@ -476,4 +501,4 @@ function coolingDown(spaceId, userId) {
   return Date.now() - last < AI_COOLDOWN_MS;
 }
 
-module.exports = { respond, trimHistories, coolingDown, CHAT_HISTORY, AI_COOLDOWN_MS };
+module.exports = { respond, trimHistories, coolingDown, wantsWeb, CHAT_HISTORY, AI_COOLDOWN_MS };

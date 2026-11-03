@@ -463,8 +463,43 @@ function leaderboard(guildId, days) {
   return [...byUser.values()].sort((a, b) => b.total - a.total);
 }
 
+/**
+ * Voice time over the last `days`, for him to answer from: by weekday and by
+ * day in the guild's zone, per person, and when each person was last in voice.
+ * `since` is when the log begins, so he can say how far back it goes.
+ */
+function voiceStats(guildId, days) {
+  const timeZone = getGuildConfig(guildId)?.timeZone || 'America/Chicago';
+  const now = Date.now();
+  const from = now - days * DAY_MS;
+  const byWeekday = Array(7).fill(0);
+  const byDay = new Map();
+  const lastSeen = {};
+  const sessions = sessionsFor(guildId);
+  for (const s of sessions) {
+    const end = s.end ?? now;
+    lastSeen[s.user] = Math.max(lastSeen[s.user] || 0, end);
+    // An hour at a time, so a night that runs past midnight lands on both days.
+    for (let t = Math.max(s.start, from); t < end; t += 60 * 60 * 1000) {
+      const slice = Math.min(60 * 60 * 1000, end - t);
+      byWeekday[partsIn(new Date(t), timeZone).weekday] += slice;
+      const label = dayLabel(t, timeZone);
+      byDay.set(label, (byDay.get(label) || 0) + slice);
+    }
+  }
+  const first = readLog(guildId)[0];
+  return {
+    since: first ? first.t : null,
+    byWeekday,
+    byDay: [...byDay.entries()],
+    perUser: leaderboard(guildId, days),
+    lastSeen,
+  };
+}
+
 module.exports = {
   onVoiceStateUpdate,
+  voiceStats,
   startVoiceLog,
   nowLines,
   recentLines,

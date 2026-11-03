@@ -41,6 +41,8 @@ const PHRASING = {
   clearnotes: 'forget your notes on someone',
   kick: 'kick someone',
   ban: 'ban someone',
+  dm: 'send someone a private message',
+  nudge: 'keep messaging someone until they turn up (up to 5 messages; it stops when they speak, join voice or answer)',
   ruling: 'rule on arguments, and have the ruling kept in the Ledger',
   bet: "put people's bets to each other and keep the book on them",
   quote: 'keep quotes in the Ledger',

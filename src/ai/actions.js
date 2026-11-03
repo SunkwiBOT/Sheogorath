@@ -35,7 +35,7 @@ const { logAiAction, notifyStaff } = require('../utils/aiAudit');
 const { getGuildConfig } = require('../config/guilds');
 
 const ACTION_TYPES = 'timeout|warn|kick|ban|delete|flag|note|clearnotes|memory|'
-  + 'title|untitle|dm|say|react|pin|thread|poll|nick|channel|event|ruling|bet|quote';
+  + 'title|untitle|dm|nudge|say|react|pin|thread|poll|nick|channel|event|ruling|bet|quote';
 
 /**
  * Pull action tags out of a reply and strip them from the visible text.
@@ -190,6 +190,22 @@ function parseActions(response) {
         const [userId, ...textParts] = parts;
         const text = textParts.join(':').trim();
         if (userId && text) actions.push({ type: 'dm', userId, text });
+        break;
+      }
+
+      case 'nudge': {
+        // [ACTION:nudge:userId:times:minutes:what to say]
+        const [userId, times, every, ...textParts] = parts;
+        const text = textParts.join(':').trim();
+        if (userId && text) {
+          actions.push({
+            type: 'nudge',
+            userId,
+            times: parseInt(times, 10) || 3,
+            every: parseInt(every, 10) || 3,
+            text,
+          });
+        }
         break;
       }
 

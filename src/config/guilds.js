@@ -48,6 +48,7 @@ const FEATURES = [
   'clips',        // his commentary over clips, and the Wabbajack (needs ffmpeg; commentary needs ELEVENLABS_*)
   'drops',        // /drops, and Twitch and Kick drops posted for the games we play (needs a gameNews block)
   'voiceLog',     // who joined, left and moved between voice channels, and when; /vclog (staff)
+  'activity',     // who has been chatting, playing and online, for him to answer from (services/activity.js)
 ];
 
 let cache = null;

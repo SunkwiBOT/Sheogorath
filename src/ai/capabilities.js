@@ -108,6 +108,9 @@ const CAPABILITIES = {
   // The per-hour caps are the real brake. Low enough that a room turning him
   // on somebody runs out of him quickly, and every send is in the audit log.
   dm:         { tier: 'auto',    targets: 'member', immune: false, perHour: 12, maxLength: 1200 },
+  // A few DMs in a row, stopping when the person turns up (services/nudges.js).
+  // Signed like a dm. Rationed harder, because one tag is up to five letters.
+  nudge:      { tier: 'auto',    targets: 'member', immune: false, perHour: 4, maxLength: 600 },
   say:        { tier: 'auto',    targets: 'none',   immune: false, perHour: 15, maxLength: 1200 },
 
   // A title: a cosmetic role, invented on the spot and hung on somebody.
@@ -188,7 +191,10 @@ const CAPABILITIES = {
   // to an Owner would stay no forever. It stops at Owners for that reason and
   // no further.
   kick:       { tier: 'propose', ownerTier: 'auto', targets: 'member', immune: true,  perHour: 5 },
-  ban:        { tier: 'propose', targets: 'member', immune: true,  perHour: 3,
+  // Ban takes the same Owner exception as kick, for the same reason: asked to
+  // ban someone by a Creator in a hall with no staff channel, the only answer
+  // he could give was no.
+  ban:        { tier: 'propose', ownerTier: 'auto', targets: 'member', immune: true,  perHour: 3,
                 maxDeleteDays: 7 },
 };
 

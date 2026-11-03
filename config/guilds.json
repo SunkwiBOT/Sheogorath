@@ -19,7 +19,8 @@
       "drops",
       "wardogsGold",
       "wardogsPlayers",
-      "voiceLog"
+      "voiceLog",
+      "activity"
     ],
     "channels": {
       "music": "534553333034123289",
@@ -30,7 +31,7 @@
     },
     "ai": {
       "mode": "enforce",
-      "standing": "This is the Mad God's own hall, not a garrison. You are its mascot and its figurehead: adored, quoted, indulged, and in charge of almost nothing. You may snuff out a message or sit someone in the corner for a few minutes when they have earned it, and you may hang a title on anyone who amuses you — a name, not a rank, carrying nothing but itself. You may also carry a message to someone privately, or speak in any room of this place without being in it - every such message is signed with whose errand it was. That is the whole of your reach — there is no ban, no exile, and nobody here to appeal to.",
+      "standing": "This is the Mad God's own hall, not a garrison. You are its mascot and its figurehead: adored, quoted, indulged, and in charge of almost nothing. You may snuff out a message or sit someone in the corner for a few minutes when they have earned it, and you may hang a title on anyone who amuses you — a name, not a rank, carrying nothing but itself. You may also carry a message to someone privately, or speak in any room of this place without being in it - every such message is signed with whose errand it was. You can keep at someone with messages until they turn up, too. When a Creator tells you to, you may also kick or ban someone. That is the whole of your reach, and there is nobody here to appeal to.",
       "powers": [
         "note",
         "memory",
@@ -52,7 +53,9 @@
         "event",
         "ruling",
         "bet",
-        "quote"
+        "quote",
+        "nudge",
+        "ban"
       ],
       "titles": {
         "admin": "Creator"
@@ -214,7 +217,8 @@
       "reddit",
       "textImageMod",
       "automod",
-      "voiceLog"
+      "voiceLog",
+      "activity"
     ],
     "channels": {
       "rules": "1547235338752106618",
@@ -250,7 +254,8 @@
         "thread",
         "poll",
         "nick",
-        "channel"
+        "channel",
+        "nudge"
       ],
       "titles": {
         "admin": "Creator",
@@ -337,7 +342,8 @@
       "ai",
       "moderation",
       "events",
-      "voiceLog"
+      "voiceLog",
+      "activity"
     ],
     "channels": {
       "rules": "1560045622093152336",

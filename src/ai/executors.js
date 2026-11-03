@@ -176,6 +176,23 @@ async function runAction(action, ctx) {
       return `sent <@${action.userId}> a message${asker ? ` for ${asker}` : ''}`;
     }
 
+    case 'nudge': {
+      // A dm, repeated until they turn up. Signed the same way, for the same reason.
+      const { startNudge } = require('../services/nudges');
+      const member = await guild.members.fetch(action.userId);
+      const asker = requester?.displayName || requester?.user?.username || null;
+      const { times, every } = await startNudge({
+        member,
+        text: String(action.text).trim().slice(0, CAPABILITIES.nudge.maxLength),
+        times: action.times,
+        every: action.every,
+        asker,
+      });
+      return times > 1
+        ? `sent <@${action.userId}> the first of up to ${times} messages, ${every} minute(s) apart, stopping when they turn up`
+        : `sent <@${action.userId}> a message`;
+    }
+
     case 'say': {
       // Speaking in a room he is not standing in.
       //
@@ -505,6 +522,7 @@ function describeAction(action) {
     case 'title':     return `Give <@${action.userId}> the title "${action.title}"`;
     case 'untitle':   return `Take the title "${action.title}" back off <@${action.userId}>`;
     case 'dm':        return `Send <@${action.userId}> a private message: ${action.text}`;
+    case 'nudge':     return `Message <@${action.userId}> up to ${action.times} times, ${action.every}m apart, until they turn up: ${action.text}`;
     case 'say':       return `Speak in ${action.channel}: ${action.text}`;
     case 'react':     return `React ${action.emoji} to the triggering message`;
     case 'pin':       return `Pin the triggering message — ${action.reason}`;

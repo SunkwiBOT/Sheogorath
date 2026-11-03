@@ -210,6 +210,24 @@ async function knowledgeFor({ guildId, guild, question, isHelp = false, guildCon
     }
   }
 
+  if (guild && hasFeature(guildId, 'activity')) {
+    try {
+      const { activityFacts } = require('../activity');
+      const lines = await activityFacts(guild, question);
+      if (lines.length) {
+        sections.push(
+          'WHO HAS BEEN AROUND (your own record of chat, voice and games, measured just now)\n'
+          + `${lines.join('\n')}\n`
+          + 'Answer questions about who is active, who has gone quiet, the busiest days and who plays '
+          + 'what from this. It is yours: you keep it, so never say these things are not tracked. '
+          + 'Where it only goes back a short way, say how far.',
+        );
+      }
+    } catch (err) {
+      console.warn('[Knowledge] Activity failed:', err?.message || err);
+    }
+  }
+
   if (hasFeature(guildId, 'drops')) {
     try {
       const { dropsFacts } = require('../drops');

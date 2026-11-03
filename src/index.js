@@ -56,6 +56,11 @@ const { scheduleEvents } = require('./services/events');
 const { scheduleLedger, isLedgerButton, handleButton: handleLedgerButton } = require('./services/ledger');
 const { onVoiceStateUpdate: onVoiceRoomUpdate, sweepOrphans } = require('./services/voicerooms');
 const { onVoiceStateUpdate: onVoiceLogUpdate, startVoiceLog } = require('./services/voiceLog');
+const { onMessage: countActivity, onPresence: onActivityPresence, startActivity, flushAll: flushActivity } = require('./services/activity');
+const { heardFrom } = require('./services/nudges');
+// A restart writes what the activity record has not saved yet. SIGTERM exits
+// through process.exit, so this runs on a systemd restart too.
+process.on('exit', () => { try { flushActivity(); } catch {} });
 const { startControlApi } = require('./api/server');
 const { getGuildConfig, guildIds, hasFeature, channelId, aiOffLimits } = require('./config/guilds');
 const {
@@ -122,6 +127,10 @@ const client = new Client({
     GatewayIntentBits.MessageContent,
     GatewayIntentBits.GuildVoiceStates,
     GatewayIntentBits.DirectMessages,
+    // What people are playing and whether they are online, for the activity
+    // record. A privileged intent: it is switched on for this application in
+    // the Developer Portal, and the bot will not log in without that.
+    GatewayIntentBits.GuildPresences,
   ],
   // DM channels arrive uncached; without this their messages never fire.
   partials: [Partials.Channel],
@@ -200,6 +209,10 @@ client.once(Events.ClientReady, async () => {
   // Who was in voice: log what changed while we were down, then follow it live.
   startVoiceLog(client).catch(err =>
     console.error('[VoiceLog] Startup failed:', err?.message || err));
+
+  // Who has been chatting and playing: square it with Discord, then follow it live.
+  startActivity(client).catch(err =>
+    console.error('[Activity] Startup failed:', err?.message || err));
 
   // Clear away voice rooms that emptied while we were down.
   try {
@@ -346,6 +359,7 @@ client.on('messageCreate', async (message) => {
 
   // A DM is read out to the hall (services/dmRelay.js), and that is all.
   if (!message.guildId) {
+    heardFrom(message.author.id);
     await handleDirectMessage(message).catch((err) =>
       console.error('[DmRelay] Failed:', err?.message || err));
     return;
@@ -356,6 +370,14 @@ client.on('messageCreate', async (message) => {
   const guildId = message.guildId;
   const config = getGuildConfig(guildId);
   if (!config) return;
+
+  // Counted before anything below can return early or delete the message.
+  try {
+    countActivity(message);
+  } catch (err) {
+    console.error('[Activity] Counting failed:', err?.message || err);
+  }
+  heardFrom(message.author.id);
 
   // --- Text-image moderation (ASCII/Unicode sexualized art) ---
   if (hasFeature(guildId, 'textImageMod') && await isSexualizedTextImage(message.content)) {
@@ -836,6 +858,17 @@ client.on(Events.VoiceStateUpdate, (oldState, newState) => {
     onVoiceLogUpdate(oldState, newState);
   } catch (err) {
     console.error('[VoiceLog] Voice state handling failed:', err?.message || err);
+  }
+  // Joining voice answers a nudge as well as a message does.
+  if (newState.channelId && !oldState.channelId) heardFrom(newState.id);
+});
+
+// What people are playing, and when they were last online.
+client.on(Events.PresenceUpdate, (oldPresence, newPresence) => {
+  try {
+    onActivityPresence(oldPresence, newPresence);
+  } catch (err) {
+    console.error('[Activity] Presence handling failed:', err?.message || err);
   }
 });
 
