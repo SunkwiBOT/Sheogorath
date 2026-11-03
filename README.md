@@ -62,6 +62,8 @@ Commands are loaded from `src/commands/*.js`. Two things decide whether a comman
 
 A guild with `channels.musicPlayer` set gets the music player channel (`src/music/panel.js`): the player message is posted there once, and its ID kept in `data/music-player.json` so a restart edits the same one. Add song and Radio join the voice channel he is already in, else the presser's, else `channels.defaultVoice`. A guild without it gets a now-playing card in `channels.music` for each song instead.
 
+Every YouTube call runs yt-dlp with Node as its JavaScript runtime, which YouTube's player needs. When YouTube decides the server is a bot ("Sign in to confirm you're not a bot"), songs end two seconds in and the player says why; after three in a row it stops and keeps the rest of the queue for **Play**. The cure is a Netscape-format cookies export from a browser signed in to YouTube (a spare account is safest), saved as `www.youtube.com_cookies.txt` in the bot folder. It is read on the next song, with no restart.
+
 - `/play <query>` - Play a YouTube song by URL or search phrase
 - `/pause` - Pause the current song
 - `/resume` - Resume the paused song

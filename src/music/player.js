@@ -1,7 +1,54 @@
 const { joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus, NoSubscriberBehavior, getVoiceConnection } = require('@discordjs/voice');
 const { EventEmitter } = require('events');
+const fs = require('fs');
+const path = require('path');
 const ytdl = require('@distube/ytdl-core');
 const ytdlexec = require('youtube-dl-exec');
+
+// A Netscape-format cookies export from a browser signed in to YouTube, for
+// when YouTube decides the server is a bot ("Sign in to confirm you're not a
+// bot"). Optional: without it yt-dlp goes in signed out, which works until
+// YouTube starts refusing the server's address.
+const YOUTUBE_COOKIES = path.join(__dirname, '..', '..', 'www.youtube.com_cookies.txt');
+
+/**
+ * Flags for every yt-dlp call that reads YouTube. YouTube's player has to run
+ * JavaScript before it hands over its audio, and yt-dlp only looks for Deno
+ * unless told otherwise. Node is already installed, so it uses that; without
+ * a runtime, formats go missing and YouTube is quicker to call us a bot.
+ */
+function youtubeArgs() {
+  const args = ['--js-runtimes', 'node'];
+  if (fs.existsSync(YOUTUBE_COOKIES)) args.push('--cookies', YOUTUBE_COOKIES);
+  return args;
+}
+
+/** youtubeArgs() as youtube-dl-exec options. */
+function youtubeOptions() {
+  const options = { jsRuntimes: 'node' };
+  if (fs.existsSync(YOUTUBE_COOKIES)) options.cookies = YOUTUBE_COOKIES;
+  return options;
+}
+
+/** A song that ends this soon with a yt-dlp error never played: YouTube refused it. */
+const QUICK_FAIL_MS = 5000;
+/** How many refused songs in a row before the queue stops advancing. */
+const MAX_QUICK_FAILURES = 3;
+// guildId -> refused songs in a row. Without a limit, a YouTube block drains a
+// 25-song radio queue in a minute, two seconds a song, in silence.
+const quickFailures = new Map();
+
+/** yt-dlp's error, said plainly. */
+function describeYtdlpError(text) {
+  const t = String(text || '');
+  if (/not a bot/i.test(t)) return 'YouTube thinks the server is a bot and wants it signed in';
+  if (/confirm your age|age-restricted/i.test(t)) return 'YouTube wants an age check for it';
+  if (/429|Too Many Requests/i.test(t)) return 'YouTube is rate-limiting the server';
+  if (/Video unavailable|Private video|has been removed/i.test(t)) return 'the video is unavailable';
+  if (/Requested format is not available/i.test(t)) return 'YouTube offered no audio for it';
+  const plain = t.split('\n')[0].replace(/^ERROR:\s*(\[[^\]]+\]\s*)?([\w-]{11}:\s*)?/, '').trim();
+  return plain.length > 120 ? `${plain.slice(0, 119)}…` : plain || 'yt-dlp could not read it';
+}
 
 const players = new Map();
 const queues = new Map();
@@ -95,6 +142,7 @@ function clearQueue(guildId) {
   queue.epoch += 1;
   queue.lastVideoId = null;
   queue.playedHistory = new Set();
+  quickFailures.delete(guildId);
   emitState(guildId);
 }
 
@@ -171,6 +219,7 @@ async function resolveVideoUrl(url) {
   if (!ytdl.validateURL(url)) {
     try {
       const raw = await ytdlexec(`ytsearch1:${url}`, {
+        ...youtubeOptions(),
         dumpSingleJson: true,
         noWarnings: true,
         noCheckCertificates: true,
@@ -196,6 +245,7 @@ async function resolveVideoUrl(url) {
     // Try to get title for URL
     try {
       const raw = await ytdlexec(url, {
+        ...youtubeOptions(),
         dumpSingleJson: true,
         noWarnings: true,
         noCheckCertificates: true,
@@ -244,6 +294,7 @@ async function play(connection, url, guildId, onFinish) {
   // YOUTUBE_DL_DIR pointed at the system install they are the same binary, and
   // one upgrade keeps playback and search from drifting to different versions.
   const ytdlpProcess = spawn('yt-dlp', [
+    ...youtubeArgs(),
     '--no-playlist',
     '-f', 'bestaudio/best',
     '-o', '-',
@@ -290,9 +341,12 @@ async function play(connection, url, guildId, onFinish) {
     } catch { /* already gone */ }
   });
 
+  // The first error yt-dlp gives, so a song YouTube refuses can say why.
+  let ytdlpError = '';
   ytdlpProcess.stderr.on('data', (data) => {
     const msg = data.toString();
     if (msg.trim()) console.error('[yt-dlp]', msg.trim().substring(0, 200));
+    if (!ytdlpError && /ERROR:/.test(msg)) ytdlpError = msg.trim();
   });
 
   console.log('Piping yt-dlp → ffmpeg for audio');
@@ -359,6 +413,26 @@ async function play(connection, url, guildId, onFinish) {
     const queue = getQueue(guildId);
     queue.isPlaying = false;
     queue.nowPlaying = null;
+
+    // Over in seconds with an error from yt-dlp: it never played.
+    if (ytdlpError && resource.playbackDuration < QUICK_FAIL_MS) {
+      const count = (quickFailures.get(guildId) || 0) + 1;
+      const gaveUp = count >= MAX_QUICK_FAILURES;
+      quickFailures.set(guildId, gaveUp ? 0 : count);
+      try {
+        musicEvents.emit('trackFailed', guildId, { title, reason: describeYtdlpError(ytdlpError), count, gaveUp });
+      } catch (err) {
+        console.error('Error reporting a failed track:', err?.message || err);
+      }
+      if (gaveUp) {
+        // Leave the rest of the queue where it is for someone to try again.
+        resources.delete(guildId);
+        emitState(guildId);
+        return;
+      }
+    } else {
+      quickFailures.delete(guildId);
+    }
     // Keep the guild claimed while onFinish resolves the next track, so a
     // /play landing in that gap queues up instead of starting a rival stream.
     // playNextInQueue releases this on every one of its exit paths.
@@ -550,6 +624,7 @@ async function fetchRelatedSong(guildId) {
     console.log(`Autoplay: Fetching related songs from mix: ${mixUrl}`);
     
     const raw = await ytdlexec(mixUrl, {
+      ...youtubeOptions(),
       flatPlaylist: true,
       dumpSingleJson: true,
       noWarnings: true,
@@ -591,6 +666,7 @@ async function expandPlaylist(playlistUrl) {
   try {
     console.log(`Expanding playlist: ${playlistUrl}`);
     const raw = await ytdlexec(playlistUrl, {
+      ...youtubeOptions(),
       flatPlaylist: true,
       dumpSingleJson: true,
       noWarnings: true,
@@ -644,6 +720,7 @@ module.exports = {
   emitState,
   fetchRelatedSong,
   expandPlaylist,
+  youtubeOptions,
   stopPlayer: stopPlaying,
   pausePlayer: pausePlaying,
   resumePlayer: resumePlaying

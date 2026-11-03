@@ -66,8 +66,10 @@ const store = jsonFile(path.join(__dirname, '../../data/music-player.json'), { e
 const DEBOUNCE_MS = 800;
 /** How often the message is looked at while a song plays, for the progress bar. */
 const TICK_MS = 10_000;
-/** How long the line under the status ("billy skipped …") stays up. */
+/** How long a line under the status ("billy skipped …") stays up. */
 const NOTICE_MS = 3 * 60_000;
+/** How many of those lines are shown, newest last. */
+const NOTICES_SHOWN = 2;
 /** How many of the queue are written out; the rest are counted. */
 const QUEUE_SHOWN = 5;
 const VOLUME_STEP = 0.1;
@@ -80,7 +82,7 @@ const ACCENT = { playing: 0xd9a441, paused: 0x8a6a2c, idle: 0x3a2b12 };
 const PLAYLIST_URL = /^https?:\/\/.*(youtube\.com|youtu\.be).*[?&]list=/;
 const PURE_PLAYLIST = /^https?:\/\/.*youtube\.com\/playlist\?list=/;
 
-/** guildId -> { channelId, message, lastKey, timer, editing, again, ensuring, notice } */
+/** guildId -> { channelId, message, lastKey, timer, editing, again, ensuring, notices } */
 const panels = new Map();
 let client = null;
 
@@ -89,9 +91,12 @@ let client = null;
 const entryIds = new WeakMap();
 let nextEntryId = 1;
 function entryId(entry) {
-  if (!entryIds.has(entry)) entryIds.set(entry, (nextEntryId++).toString(36));
+  if (!entryIds.has(entry)) entryIds.set(entry, `e${(nextEntryId++).toString(36)}`);
   return entryIds.get(entry);
 }
+
+/** The queue menu's first option, which empties the whole line. */
+const CLEAR_ALL = 'clear';
 
 /** The guild's player channel, when music is on there and one is configured. */
 function panelChannelId(guildId) {
@@ -196,6 +201,8 @@ function buildPanel(guildId) {
     head = lines.join('\n');
   } else if (starting) {
     head = '## Tuning the lute…\nThe next song is on its way.';
+  } else if (queue.songs.length > 0) {
+    head = '## The band has stopped\nSongs are still waiting. Press **Play** to start the line again.';
   } else {
     head = '## Silence in the halls\nNothing plays. Press **Add song** or **Radio** to wake the band.';
   }
@@ -210,8 +217,9 @@ function buildPanel(guildId) {
   if (np?.addedBy) status.push(`Queued by ${plain(np.addedBy, 50)}`);
   container.addTextDisplayComponents((t) => t.setContent(`-# ${status.join(' · ')}`));
 
-  if (panel?.notice && Date.now() - panel.notice.at < NOTICE_MS) {
-    container.addTextDisplayComponents((t) => t.setContent(`-# ${panel.notice.text}`));
+  const notices = (panel?.notices || []).filter((n) => Date.now() - n.at < NOTICE_MS);
+  if (notices.length) {
+    container.addTextDisplayComponents((t) => t.setContent(notices.map((n) => `-# ${n.text}`).join('\n')));
   }
 
   // The queue.
@@ -229,22 +237,26 @@ function buildPanel(guildId) {
   container.addTextDisplayComponents((t) => t.setContent(line));
   container.addSeparatorComponents((s) => s.setSpacing(SeparatorSpacingSize.Small));
 
-  // The buttons.
+  // The buttons. Two rows that fit the card's width on a desktop: playback
+  // and volume, then what to play. Clearing the line lives in the queue menu.
   const nothing = !np && !starting && songs.length === 0 && !state.connected;
+  // With the music stopped but songs still waiting (YouTube refused a run of
+  // them, say), the middle button starts the line again.
+  let toggle;
+  if (np) toggle = state.isPaused ? ['▶️', 'Resume'] : ['⏸️', 'Pause'];
+  else toggle = ['▶️', 'Play'];
   container.addActionRowComponents(
     new ActionRowBuilder().addComponents(
       button('stop', '⏹️', 'Stop', ButtonStyle.Danger, nothing),
-      button('toggle', state.isPaused ? '▶️' : '⏸️', state.isPaused ? 'Resume' : 'Pause', ButtonStyle.Primary, !np),
+      button('toggle', toggle[0], toggle[1], ButtonStyle.Primary, !np && (starting || songs.length === 0)),
       button('skip', '⏭️', 'Skip', ButtonStyle.Secondary, !np),
-      button('voldown', '🔉', null, ButtonStyle.Secondary, state.volume <= 0),
-      button('volup', '🔊', null, ButtonStyle.Secondary, state.volume >= 2),
+      button('voldown', '🔉', '−', ButtonStyle.Secondary, state.volume <= 0),
+      button('volup', '🔊', '+', ButtonStyle.Secondary, state.volume >= 2),
     ),
     new ActionRowBuilder().addComponents(
       button('add', '➕', 'Add song', ButtonStyle.Success),
       button('radio', '📻', 'Radio', ButtonStyle.Secondary),
-      button('autoplay', '🔁', state.autoplay ? 'Autoplay on' : 'Autoplay off',
-        state.autoplay ? ButtonStyle.Success : ButtonStyle.Secondary),
-      button('clear', '🧹', 'Clear line', ButtonStyle.Secondary, songs.length === 0),
+      button('autoplay', '🔁', 'Autoplay', state.autoplay ? ButtonStyle.Success : ButtonStyle.Secondary),
       button('drop', '🗑️', 'Drop from radio', ButtonStyle.Secondary, !np),
     ),
   );
@@ -253,12 +265,20 @@ function buildPanel(guildId) {
     container.addActionRowComponents(new ActionRowBuilder().addComponents(
       new StringSelectMenuBuilder()
         .setCustomId(`${PREFIX}remove`)
-        .setPlaceholder('Take a song out of the line…')
-        .addOptions(songs.slice(0, 25).map((s, i) => ({
-          label: clip(s.title || s.query || 'Unknown', 100),
-          value: entryId(s),
-          description: clip(`#${i + 1} · queued by ${s.addedBy || 'Unknown'}`, 100),
-        }))),
+        .setPlaceholder('Take songs out of the line…')
+        .addOptions([
+          {
+            label: 'Clear the whole line',
+            value: CLEAR_ALL,
+            emoji: { name: '🧹' },
+            description: `Take all ${songs.length} song${songs.length === 1 ? '' : 's'} out`,
+          },
+          ...songs.slice(0, 24).map((s, i) => ({
+            label: clip(s.title || s.query || 'Unknown', 100),
+            value: entryId(s),
+            description: clip(`#${i + 1} · queued by ${s.addedBy || 'Unknown'}`, 100),
+          })),
+        ]),
     ));
   }
 
@@ -276,7 +296,7 @@ function buildPanel(guildId) {
 function panelFor(guildId) {
   let panel = panels.get(guildId);
   if (!panel) {
-    panel = { channelId: panelChannelId(guildId), message: null, lastKey: null, timer: null, editing: false, again: false, ensuring: null, notice: null };
+    panel = { channelId: panelChannelId(guildId), message: null, lastKey: null, timer: null, editing: false, again: false, ensuring: null, notices: [] };
     panels.set(guildId, panel);
   }
   return panel;
@@ -332,7 +352,8 @@ async function flush(guildId) {
 /** Put a line under the status for a few minutes: who did what, or what went wrong. */
 function panelNotice(guildId, text) {
   if (!hasPanel(guildId)) return;
-  panelFor(guildId).notice = { text: clip(String(text), 300), at: Date.now() };
+  const panel = panelFor(guildId);
+  panel.notices = [...panel.notices, { text: clip(String(text), 300), at: Date.now() }].slice(-NOTICES_SHOWN);
   refreshPanel(guildId);
 }
 
@@ -401,6 +422,15 @@ function startMusicPanels(discordClient) {
 
   musicEvents.on('state', (guildId) => {
     if (hasPanel(guildId)) refreshPanel(guildId);
+  });
+
+  // A song YouTube would not hand over ends in two seconds with no sound;
+  // without this the player just skipped on and nobody knew why.
+  musicEvents.on('trackFailed', (guildId, { title, reason, gaveUp }) => {
+    const song = `**${plain(title || 'that song', 100)}**`;
+    panelNotice(guildId, gaveUp
+      ? `⚠️ Stopped: three songs in a row would not play. Last was ${song}: ${reason}. Press Play to try the line again.`
+      : `⚠️ Could not play ${song}: ${reason}. Skipped it.`);
   });
 
   // The progress bar and an expiring notice change with no event to say so.
@@ -577,8 +607,14 @@ async function handlePanelInteraction(interaction) {
         await queueRadio(interaction);
         break;
       case 'toggle': {
+        if (!np) {
+          if (queue.songs.length === 0) return tell(interaction, 'Nothing is waiting in the line.');
+          panelNotice(guildId, `▶️ ${name} started the line`);
+          await startIfIdle(interaction, await voiceFor(interaction));
+          break;
+        }
         const player = players.get(guildId);
-        if (!player || !np) return tell(interaction, 'Nothing is playing.');
+        if (!player) return tell(interaction, 'Nothing is playing.');
         if (player.state.status === AudioPlayerStatus.Paused) {
           resumePlaying(guildId);
           panelNotice(guildId, `▶️ ${name} resumed`);
@@ -607,13 +643,6 @@ async function handlePanelInteraction(interaction) {
         setAutoplay(guildId, !queue.autoplay);
         panelNotice(guildId, `🔁 ${name} turned autoplay ${queue.autoplay ? 'on' : 'off'}`);
         break;
-      case 'clear': {
-        const count = queue.songs.length;
-        queue.songs = [];
-        emitState(guildId);
-        panelNotice(guildId, `🧹 ${name} cleared ${count} song${count === 1 ? '' : 's'} from the line`);
-        break;
-      }
       case 'drop': {
         if (!np) return tell(interaction, 'Nothing is playing.');
         const { removeTrackFromRadio } = require('../commands/radio');
@@ -627,6 +656,13 @@ async function handlePanelInteraction(interaction) {
       }
       case 'remove': {
         const id = interaction.values?.[0];
+        if (id === CLEAR_ALL) {
+          const count = queue.songs.length;
+          queue.songs = [];
+          emitState(guildId);
+          panelNotice(guildId, `🧹 ${name} cleared ${count} song${count === 1 ? '' : 's'} from the line`);
+          break;
+        }
         const at = queue.songs.findIndex((s) => entryIds.get(s) === id);
         if (at < 0) {
           refreshPanel(guildId, { now: true });

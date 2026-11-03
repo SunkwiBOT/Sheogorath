@@ -1,6 +1,7 @@
 'use strict';
 const { EmbedBuilder } = require('discord.js');
 const ytdlexec = require('youtube-dl-exec');
+const { youtubeOptions } = require('./player');
 
 /**
  * Create a rich embed for now playing music
@@ -27,6 +28,7 @@ async function createNowPlayingEmbed(song, addedBy = 'Unknown') {
           webpage_url: song.url,
         }
       : await ytdlexec(song.url || song.query, {
+          ...youtubeOptions(),
           dumpSingleJson: true,
           noWarnings: true,
           noCheckCertificates: true,
