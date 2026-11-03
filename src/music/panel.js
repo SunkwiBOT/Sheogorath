@@ -53,7 +53,7 @@ const {
   getConnection,
 } = require('./player');
 const { guildIds, hasFeature, channelId } = require('../config/guilds');
-const { musicDenialReason } = require('../utils/permissions');
+const { musicPlayerDenialReason } = require('../utils/permissions');
 const { jsonFile } = require('../storage/jsonFile');
 
 const PREFIX = 'mplayer:';
@@ -551,7 +551,7 @@ function addSongModal() {
 /** Route a press, a pick or a submitted form from the player. */
 async function handlePanelInteraction(interaction) {
   const guildId = interaction.guildId;
-  const denied = musicDenialReason(guildId, interaction.member);
+  const denied = musicPlayerDenialReason(guildId, interaction.member);
   if (denied) return tell(interaction, denied);
   if (!hasPanel(guildId)) return tell(interaction, '❌ There is no music player in this server.');
 

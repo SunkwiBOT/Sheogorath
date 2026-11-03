@@ -58,7 +58,7 @@ Commands are loaded from `src/commands/*.js`. Two things decide whether a comman
 - `/settledebate` - Sheogorath reads the last 20 messages, checks the claims on the web and rules on who is right (needs the `ai` feature)
 
 ### 🎵 Music
-*Requires the `music` feature, and bot admin — music controls are admin-only, including the now-playing buttons and the music player channel's.*
+*Requires the `music` feature, and bot admin — music controls are admin-only, including the now-playing buttons. The music player channel's buttons also answer the roles in `roles.musicPlayer`.*
 
 A guild with `channels.musicPlayer` set gets the music player channel (`src/music/panel.js`): the player message is posted there once, and its ID kept in `data/music-player.json` so a restart edits the same one. Add song and Radio join the voice channel he is already in, else the presser's, else `channels.defaultVoice`. A guild without it gets a now-playing card in `channels.music` for each song instead.
 

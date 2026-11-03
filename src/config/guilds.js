@@ -127,6 +127,11 @@ function normalizeGuild(id, raw) {
       // guild that wants no autorole should say so by leaving this unset rather
       // than by clearing a role it relies on elsewhere.
       onJoin: roles.onJoin || null,
+      // Who may press the music player channel's buttons besides bot admins
+      // (music/panel.js). The music commands stay admin-only either way.
+      musicPlayer: Array.isArray(roles.musicPlayer)
+        ? roles.musicPlayer.map(String).filter((id) => SNOWFLAKE.test(id))
+        : [],
     },
     // How much rope the AI moderator gets in this guild. See ai/capabilities.js
     // for what each mode means. Absent means `shadow`: a guild that has never

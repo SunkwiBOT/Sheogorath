@@ -137,6 +137,21 @@ function musicDenialReason(guildId, member) {
 }
 
 /**
+ * Gate for the music player channel's buttons (music/panel.js): bot admins,
+ * and the roles the guild lists in `roles.musicPlayer`.
+ * @returns {string|null} a refusal message, or null when allowed.
+ */
+function musicPlayerDenialReason(guildId, member) {
+  if (!hasFeature(guildId, 'music')) return '❌ Music is not enabled in this server.';
+  if (isAdmin(member)) return null;
+  const allowed = getGuildConfig(guildId)?.roles.musicPlayer || [];
+  if (allowed.some((id) => member?.roles?.cache?.has(id))) return null;
+  const names = allowed.map((id) => member?.guild?.roles.cache.get(id)?.name).filter(Boolean);
+  const who = new Intl.ListFormat('en', { type: 'conjunction' }).format(['admins', ...names]);
+  return `❌ The music player is for ${who}.`;
+}
+
+/**
  * Gate for slash commands. Filtering at registration should mean a disabled
  * command is never invokable, so the feature branch here is defence in depth
  * against a stale registration.
@@ -212,6 +227,7 @@ module.exports = {
   STAFF_COMMANDS,
   ADMIN_SUBCOMMANDS,
   musicDenialReason,
+  musicPlayerDenialReason,
   commandDenialReason,
   commandsForGuild,
 };
