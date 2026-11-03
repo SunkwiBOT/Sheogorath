@@ -244,7 +244,7 @@ client.once(Events.ClientReady, async () => {
     console.error('[WardogsGold] Failed to schedule the gold price:', err?.message || err);
   }
 
-  // The WARDOGS player count, read from Steam every ten minutes for /players.
+  // The WARDOGS player count, read from Steam every ten minutes for /wardogsplayers.
   try {
     scheduleWardogsPlayers();
   } catch (err) {

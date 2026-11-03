@@ -5,7 +5,7 @@ const players = require('../services/wardogsPlayers');
 
 module.exports = {
   data: new SlashCommandBuilder()
-    .setName('players')
+    .setName('wardogsplayers')
     .setDescription('How many are playing WARDOGS on Steam right now, with a graph')
     .addStringOption((o) => o
       .setName('range')
@@ -25,7 +25,7 @@ module.exports = {
       const message = await players.playersMessage({ range, timeZone });
       return interaction.editReply({ ...message, allowedMentions: { parse: [] } });
     } catch (err) {
-      console.warn(`[WardogsPlayers] /players failed: ${err?.message || err}`);
+      console.warn(`[WardogsPlayers] /wardogsplayers failed: ${err?.message || err}`);
       return interaction.editReply("❌ Steam isn't answering just now. Try again in a bit.");
     }
   },

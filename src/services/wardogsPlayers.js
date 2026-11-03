@@ -1,6 +1,6 @@
 'use strict';
 /**
- * How many people are playing WARDOGS, for /players: Steam's own count of
+ * How many people are playing WARDOGS, for /wardogsplayers: Steam's own count of
  * players in the game right now (ISteamUserStats/GetNumberOfCurrentPlayers,
  * public, no key), read every ten minutes and kept, so it can be drawn.
  *
@@ -28,7 +28,7 @@ const SAMPLE_MINUTES = 10;
 const HOUR_MS = 3600 * 1000;
 const DAY_MS = 24 * HOUR_MS;
 const KEEP_MS = 8 * DAY_MS;
-// A reading this fresh answers /players without asking Steam again.
+// A reading this fresh answers /wardogsplayers without asking Steam again.
 const FRESH_MS = 5 * 60 * 1000;
 const BLUE = 0x3987e5;
 const LINE = '#3987e5';
@@ -197,7 +197,7 @@ function change(nowCount, then) {
   return `${pct > 0 ? '▲' : '▼'} ${Math.abs(pct).toFixed(1)}%`;
 }
 
-/** The /players reply: the count now, how it compares, and a graph of `range`. */
+/** The /wardogsplayers reply: the count now, how it compares, and a graph of `range`. */
 async function playersMessage({ range = 'week', timeZone = 'UTC' } = {}) {
   if (!RANGES.includes(range)) range = 'week';
   await backfill();
