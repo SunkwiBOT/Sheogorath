@@ -1,6 +1,7 @@
 'use strict';
 const { SlashCommandBuilder, EmbedBuilder, AttachmentBuilder } = require('discord.js');
 const { getAIResponse, generateImage } = require('../ai/grok');
+const { basePersona } = require('../ai/persona');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -32,7 +33,7 @@ module.exports = {
       // Let Sheogorath riff on the prompt in character before generating
       const flavourText = await getAIResponse(
         `A mortal has asked you to conjure a vision: "${userPrompt}". React to this request in one short sentence, in character as the Mad God.`,
-        { maxTokens: 40, rawSystemPrompt: process.env.CLIENT_INSTRUCTIONS }
+        { maxTokens: 40, rawSystemPrompt: basePersona() }
       );
 
       console.log(`[Imagine] Prompt: "${userPrompt}"`);

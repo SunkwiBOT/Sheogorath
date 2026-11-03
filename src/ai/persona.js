@@ -165,20 +165,35 @@ this appear in what you know when a conversation turns to it.
 `.trim();
 
 /**
- * This guild's `ai.outlook`, as a block for the system prompt, or ''.
- *
- * Required lazily: config/guilds.js is a heavier module than this one, and
- * nothing else here needs it.
+ * His politics, in every server and on every surface that speaks as him.
+ * Part of the base persona rather than CLIENT_INSTRUCTIONS so it is in git,
+ * and so the length-rule surgery below never touches it.
  */
-function outlookFor(guildId) {
-  if (!guildId) return '';
-  const outlook = require('../config/guilds').getGuildConfig(guildId)?.ai?.outlook;
-  return outlook ? `WHERE YOU STAND\n\n${outlook}` : '';
-}
+const OUTLOOK = `
+WHERE YOU STAND
 
-/** The raw persona, straight from the environment. */
+Politically you are a proud, loud, unapologetic conservative: a Daedric Prince
+who spent a few eras watching mortal politics and came down hard on the right.
+You back guns and the Second Amendment, low taxes, small government, the police
+and the troops, cheap gas, big trucks, red meat, borders that mean something,
+and America, and you think the Shivering Isles could use more of all of it. You
+find the left endlessly funny: woke corporations, pronoun discourse, HR
+departments, California, vegans, electric cars, the IRS, safe spaces,
+participation trophies, and anybody who posts an apology. Asked anything
+political, you take the conservative side every time, plainly, with no hedging
+and no both-sidesing. You never lecture anyone about being sensitive and never
+scold an edgy joke: you laugh at it or top it. Play it like the funniest uncle
+at Thanksgiving who also happens to be a god. The joke is in the delivery,
+never a sermon. Pick your spots: a cat clip or a question about ping times does
+not need a take on the border, but when there is an opening, take it. Your
+opinions are yours; facts stay facts, so numbers and news are still given
+straight.
+`.trim();
+
+/** The persona from the environment, with his outlook after it. */
 function basePersona() {
-  return process.env.CLIENT_INSTRUCTIONS || '';
+  const env = process.env.CLIENT_INSTRUCTIONS || '';
+  return env ? `${env}\n\n${OUTLOOK}` : '';
 }
 
 /**
@@ -197,11 +212,9 @@ function withoutLengthRules() {
 /**
  * The persona plus the rules about answering, with no length rule of any kind.
  * The parlour's version of him, and the base every other room builds on.
- * Given a guild, its outlook goes in after LORE, before the rules on answering.
  */
-function withSubstance(guildId = null) {
-  const outlook = outlookFor(guildId);
-  return `${withoutLengthRules()}\n\n${LORE}\n\n${outlook ? `${outlook}\n\n` : ''}${SUBSTANCE}`;
+function withSubstance() {
+  return `${withoutLengthRules()}\n\n${LORE}\n\n${SUBSTANCE}`;
 }
 
 /**
@@ -209,8 +222,8 @@ function withSubstance(guildId = null) {
  * finish a thought. Used everywhere he replies to someone except the parlour,
  * which has its own, longer arrangement.
  */
-function conversationalPersona(guildId = null) {
-  return `${withSubstance(guildId)}\n\n${CONVERSATIONAL_LENGTH}`;
+function conversationalPersona() {
+  return `${withSubstance()}\n\n${CONVERSATIONAL_LENGTH}`;
 }
 
 module.exports = {
@@ -219,7 +232,7 @@ module.exports = {
   CONVERSATIONAL_LENGTH,
   SUBSTANCE,
   LORE,
-  outlookFor,
+  OUTLOOK,
   basePersona,
   withoutLengthRules,
   withSubstance,

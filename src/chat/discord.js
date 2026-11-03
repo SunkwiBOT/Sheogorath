@@ -268,7 +268,7 @@ async function askChatGPT(userMessage, { contentOverride = null, maxTokens = und
       // sentences everywhere else. Someone who has gone to the trouble of
       // addressing him deserves more than a punchline.
       persona: () => ({
-        systemBase: inParlour ? parlourPersona(guildId) : conversationalPersona(guildId),
+        systemBase: inParlour ? parlourPersona() : conversationalPersona(),
         systemSuffix: inParlour ? PARLOUR_PROMPT : '',
         guildId,
         // The parlour is the only place either is raised.

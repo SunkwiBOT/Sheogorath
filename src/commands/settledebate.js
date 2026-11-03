@@ -91,10 +91,11 @@ function chunks(text, max = 2000) {
 /** The ruling itself, from a transcript. Split out so it can be run without Discord. */
 async function settle(lines) {
   const { getAIResponseWithSearch } = require('../ai/grok');
+  const { basePersona } = require('../ai/persona');
   const today = new Date().toISOString().slice(0, 10);
   return getAIResponseWithSearch(
     `Settle this argument:\n\n${lines.join('\n')}`,
-    { rawSystemPrompt: process.env.CLIENT_INSTRUCTIONS + judgeInstructions(today) },
+    { rawSystemPrompt: basePersona() + judgeInstructions(today) },
   );
 }
 

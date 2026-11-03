@@ -3,6 +3,7 @@ const https = require('https');
 const { assertWithinBudget, record: recordSpend } = require('./budget');
 const { actionDocsFor } = require('./actionDocs');
 const { getGuildConfig } = require('../config/guilds');
+const { basePersona } = require('./persona');
 
 const GROK_API_URL = 'https://api.x.ai/v1/chat/completions';
 
@@ -22,7 +23,7 @@ const GROK_API_URL = 'https://api.x.ai/v1/chat/completions';
  *   surface with no guild — leaves him the powers that need no configuration.
  */
 function buildSystemPrompt(base, suffix = '', guildId = null) {
-  return (base || process.env.CLIENT_INSTRUCTIONS)
+  return (base || basePersona())
     + actionDocsFor(getGuildConfig(guildId))
     + (suffix || '');
 }

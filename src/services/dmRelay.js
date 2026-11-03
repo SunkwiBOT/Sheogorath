@@ -35,13 +35,13 @@ async function hallFor(client, userId) {
   return null;
 }
 
-async function mockery(name, text, hadFile, guildId = null) {
+async function mockery(name, text, hadFile) {
   const said = text ? `"${text.slice(0, 500)}"` : 'nothing in words';
   const prompt = `${name} sent you a private message, thinking it was between the two of you. `
     + `They said ${said}${hadFile ? ' and sent a file with it' : ''}. You are reading it out to the whole hall. `
     + 'In one or two short sentences, in character, mock them for it. Playful, never cruel. '
     + 'Use their name as written — no @ mentions, no action tags.';
-  const line = await getAIResponse(prompt, { rawSystemPrompt: conversationalPersona(guildId), maxTokens: 120 });
+  const line = await getAIResponse(prompt, { rawSystemPrompt: conversationalPersona(), maxTokens: 120 });
   return scrub(line || '').replace(/[ \t]{2,}/g, ' ').trim() || null;
 }
 
@@ -65,7 +65,7 @@ async function handleDirectMessage(message) {
   lastRelay.set(message.author.id, now);
 
   const name = hall.member.displayName;
-  const line = await mockery(name, text, hadFile, hall.guild.id).catch((err) => {
+  const line = await mockery(name, text, hadFile).catch((err) => {
     console.warn(`[DmRelay] No line for ${name}: ${err?.message || err}`);
     return null;
   });

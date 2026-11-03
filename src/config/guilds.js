@@ -132,10 +132,6 @@ function normalizeGuild(id, raw) {
       // community room, and nothing else in this file says so — features
       // describe what the bot runs, not what he is to the people in the room.
       standing: typeof raw.ai?.standing === 'string' ? raw.ai.standing.trim() : null,
-      // His opinions in this guild — politics, mostly — added to his persona
-      // here and nowhere else. Per guild because the main hall asked for it and
-      // the game's own Discord did not.
-      outlook: typeof raw.ai?.outlook === 'string' ? raw.ai.outlook.trim() : null,
       // Which of his powers this guild wants him to have, by capability name
       // (see ai/capabilities.js). Absent means all of them that this guild's
       // features support — the existing behaviour — so only a guild that wants

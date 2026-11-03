@@ -84,8 +84,8 @@ permission to invent. Being wrong at length is worse than being wrong briefly.
  * place where answering nothing at length is possible, so the rule that the
  * answer comes first belongs here more than anywhere.
  */
-function parlourPersona(guildId = null) {
-  return withSubstance(guildId);
+function parlourPersona() {
+  return withSubstance();
 }
 
 /** The parlour's channel ID for a guild, or null. */
