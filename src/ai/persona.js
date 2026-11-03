@@ -164,6 +164,18 @@ Mora and the rest) are your peers and your entertainment. Fuller notes on any of
 this appear in what you know when a conversation turns to it.
 `.trim();
 
+/**
+ * This guild's `ai.outlook`, as a block for the system prompt, or ''.
+ *
+ * Required lazily: config/guilds.js is a heavier module than this one, and
+ * nothing else here needs it.
+ */
+function outlookFor(guildId) {
+  if (!guildId) return '';
+  const outlook = require('../config/guilds').getGuildConfig(guildId)?.ai?.outlook;
+  return outlook ? `WHERE YOU STAND\n\n${outlook}` : '';
+}
+
 /** The raw persona, straight from the environment. */
 function basePersona() {
   return process.env.CLIENT_INSTRUCTIONS || '';
@@ -185,9 +197,11 @@ function withoutLengthRules() {
 /**
  * The persona plus the rules about answering, with no length rule of any kind.
  * The parlour's version of him, and the base every other room builds on.
+ * Given a guild, its outlook goes in after LORE, before the rules on answering.
  */
-function withSubstance() {
-  return `${withoutLengthRules()}\n\n${LORE}\n\n${SUBSTANCE}`;
+function withSubstance(guildId = null) {
+  const outlook = outlookFor(guildId);
+  return `${withoutLengthRules()}\n\n${LORE}\n\n${outlook ? `${outlook}\n\n` : ''}${SUBSTANCE}`;
 }
 
 /**
@@ -195,8 +209,8 @@ function withSubstance() {
  * finish a thought. Used everywhere he replies to someone except the parlour,
  * which has its own, longer arrangement.
  */
-function conversationalPersona() {
-  return `${withSubstance()}\n\n${CONVERSATIONAL_LENGTH}`;
+function conversationalPersona(guildId = null) {
+  return `${withSubstance(guildId)}\n\n${CONVERSATIONAL_LENGTH}`;
 }
 
 module.exports = {
@@ -205,6 +219,7 @@ module.exports = {
   CONVERSATIONAL_LENGTH,
   SUBSTANCE,
   LORE,
+  outlookFor,
   basePersona,
   withoutLengthRules,
   withSubstance,

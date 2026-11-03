@@ -734,7 +734,7 @@ async function verdictOn(guild, card, ranks, best) {
     + (crown ? `crown ${crown}` : 'lament that nobody called a single fight')
     + (worst ? `, and mock ${names.get(worst.userId)} for picking worst` : '')
     + '. Playful, never cruel. Use their names as written — no @ mentions, no action tags.';
-  const text = await getAIResponse(prompt, { rawSystemPrompt: conversationalPersona(), maxTokens: 150 });
+  const text = await getAIResponse(prompt, { rawSystemPrompt: conversationalPersona(guild?.id), maxTokens: 150 });
   return scrub(text || '').replace(/[ \t]{2,}/g, ' ').trim() || null;
 }
 
