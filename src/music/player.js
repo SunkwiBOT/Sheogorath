@@ -10,7 +10,7 @@ const queues = new Map();
 const processes = new Map();
 // Retain the live AudioResource per guild. Without this we can't reach the
 // inlineVolume transformer to change volume, or read playbackDuration for the
-// elapsed position the control app renders as a progress bar.
+// elapsed position the music player renders as a progress bar.
 const resources = new Map();
 // Volume persists across songs — each new resource is created mid-playback, so
 // we re-apply the guild's stored level rather than resetting to 1.0 every track.
@@ -19,9 +19,9 @@ const volumes = new Map();
 const DEFAULT_VOLUME = 1.0;
 
 // Emits 'state' (guildId) whenever playback or the queue changes, so the
-// control API can push updates over WebSocket instead of the app polling.
+// music player channel (panel.js) redraws itself instead of polling.
 const musicEvents = new EventEmitter();
-// Discord button handlers and API clients can both drive playback; a listener
+// Slash commands and the player's buttons can both drive playback; a listener
 // per guild per connection would otherwise pile up warnings.
 musicEvents.setMaxListeners(50);
 
@@ -108,21 +108,6 @@ function removeFromQueue(guildId, index) {
   return null;
 }
 
-/**
- * Move a queued song to a different position. Used by the control app's
- * drag-to-reorder; both indices are into the pending queue, excluding the
- * currently playing track.
- */
-function moveInQueue(guildId, fromIndex, toIndex) {
-  const queue = getQueue(guildId);
-  const len = queue.songs.length;
-  if (fromIndex < 0 || fromIndex >= len || toIndex < 0 || toIndex >= len) return null;
-  const [moved] = queue.songs.splice(fromIndex, 1);
-  queue.songs.splice(toIndex, 0, moved);
-  emitState(guildId);
-  return moved;
-}
-
 function getNextSong(guildId) {
   const queue = getQueue(guildId);
   return queue.songs.shift();
@@ -132,7 +117,7 @@ function getNextSong(guildId) {
  * Claim the right to start playback for a guild, returning false if a track is
  * already playing or is mid-resolve.
  *
- * /play, /radio and the control API all used to test `queue.isPlaying` and set
+ * /play, /radio and the music player all used to test `queue.isPlaying` and set
  * it themselves. Resolving a track takes a yt-dlp round trip, and for that whole
  * window the flag reads false — so two callers could both decide nothing was
  * playing, and the second `player.play()` would swap out the first one's
@@ -160,7 +145,7 @@ function playbackEpoch(guildId) {
 }
 
 /**
- * Pull the fields both the Discord embed and the control app need out of a
+ * Pull the fields both the Discord embed and the music player need out of a
  * yt-dlp JSON dump. Kept in one place so the two consumers can't drift.
  */
 function extractMetadata(entry) {
@@ -231,7 +216,7 @@ async function play(connection, url, guildId, onFinish) {
   const { url: videoUrl, title, duration, thumbnail, uploader, viewCount } = await resolveVideoUrl(url);
   const queue = getQueue(guildId);
   // Carry the resolved metadata on nowPlaying so the embed builder and the
-  // control app can both read duration/artwork without re-invoking yt-dlp.
+  // music player can both read duration/artwork without re-invoking yt-dlp.
   queue.nowPlaying = { url: videoUrl, title, duration, thumbnail, uploader, viewCount };
   queue.isPlaying = true;
   
@@ -396,7 +381,7 @@ async function play(connection, url, guildId, onFinish) {
     emitState(guildId);
   });
 
-  // Pause/resume can be driven from Discord buttons or the app; either way the
+  // Pause/resume can be driven from a command or the player's buttons; either way the
   // other surface needs to see the new status.
   player.removeAllListeners(AudioPlayerStatus.Paused);
   player.removeAllListeners(AudioPlayerStatus.Playing);
@@ -477,7 +462,7 @@ function skipSong(guildId) {
 
 /**
  * Set playback volume. `level` is 0.0–2.0, where 1.0 is unmodified — above 1.0
- * amplifies and will clip on already-loud sources, so the app caps its slider
+ * amplifies and will clip on already-loud sources, so the player stops its buttons
  * at 2.0. Stored per guild and re-applied to each subsequent track.
  */
 function setVolume(guildId, level) {
@@ -501,7 +486,7 @@ function getVolume(guildId) {
 }
 
 /**
- * Full snapshot of playback for the control app. Position comes from the
+ * Full snapshot of playback for the music player. Position comes from the
  * resource's playbackDuration, which counts only audio actually streamed, so it
  * stays correct across pauses without us tracking wall-clock time.
  */
@@ -521,7 +506,7 @@ function getPlaybackState(guildId) {
     nowPlaying: queue.nowPlaying
       ? {
           ...queue.nowPlaying,
-          // playbackDuration is milliseconds; the app works in seconds.
+          // playbackDuration is milliseconds; the player works in seconds.
           position: resource ? Math.floor(resource.playbackDuration / 1000) : 0,
         }
       : null,
@@ -642,7 +627,6 @@ module.exports = {
   addToQueue,
   clearQueue,
   removeFromQueue,
-  moveInQueue,
   getNextSong,
   beginPlayback,
   endPlayback,

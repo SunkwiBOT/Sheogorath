@@ -61,7 +61,8 @@ const { heardFrom } = require('./services/nudges');
 // A restart writes what the activity record has not saved yet. SIGTERM exits
 // through process.exit, so this runs on a systemd restart too.
 process.on('exit', () => { try { flushActivity(); } catch {} });
-const { startControlApi } = require('./api/server');
+const { startWebServer } = require('./api/server');
+const { startMusicPanels, isPanelChannel, isPanelInteraction, handlePanelInteraction } = require('./music/panel');
 const { getGuildConfig, guildIds, hasFeature, channelId, aiOffLimits } = require('./config/guilds');
 const {
   musicDenialReason,
@@ -179,13 +180,19 @@ client.once(Events.ClientReady, async () => {
     console.log(`[Budget] ${b.month}: $${b.spentUsd.toFixed(4)} of $${b.limitUsd.toFixed(2)} spent over ${b.calls} call(s).`);
   }
 
-  // Control API for the companion app. Started after ready so it never reports
-  // healthy before the client can actually act on a request. Failure here must
-  // not take the bot down, so it's isolated.
+  // The music player channel: one message, edited as the music changes.
   try {
-    startControlApi(client);
+    startMusicPanels(client);
   } catch (err) {
-    console.error('[API] Failed to start control API:', err?.message || err);
+    console.error('[MusicPanel] Failed to start:', err?.message || err);
+  }
+
+  // The web server, for the WARDOGS Steam sign-in only, and only while that
+  // feature is on somewhere. Failure here must not take the bot down.
+  try {
+    startWebServer(client);
+  } catch (err) {
+    console.error('[Web] Failed to start the web server:', err?.message || err);
   }
 
   // Register per-guild rather than globally: propagation is instant, and the
@@ -349,6 +356,10 @@ client.once(Events.ClientReady, async () => {
 
 
 client.on('messageCreate', async (message) => {
+  // The music player channel holds the player and nothing else. Whatever else
+  // lands there is deleted by music/panel.js, so it is not read, counted or
+  // answered here.
+  if (isPanelChannel(message.channelId)) return;
   if (message.author.bot) return;
   // Discord's own notices (a pin, a join, a boost) are authored by whoever
   // caused them, and a pin notice references the pinned message, so pinning one
@@ -604,6 +615,14 @@ client.on(Events.InteractionCreate, async (interaction) => {
   lastInteractionTime = Date.now();
 
   try {
+    // The music player channel's buttons, its remove menu and its Add song
+    // form. Gated in the handler, by the same rule as the music commands.
+    if ((interaction.isButton() || interaction.isStringSelectMenu() || interaction.isModalSubmit())
+      && isPanelInteraction(interaction)) {
+      await handlePanelInteraction(interaction);
+      return;
+    }
+
     // Handle button interactions for music controls
     if (interaction.isButton()) {
       // Sheogorath's Approve/Deny cards are routed first and return early.

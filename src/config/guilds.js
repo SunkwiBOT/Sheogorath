@@ -71,8 +71,13 @@ function normalizeGuild(id, raw) {
     channels: {
       // Where now-playing cards are posted.
       music: channels.music || null,
-      // Voice channel the companion app joins when the bot isn't already
-      // connected. Unused by the slash commands, which follow the caller.
+      // The music player channel (music/panel.js): one message he keeps
+      // editing, with the song's picture and the buttons that run playback.
+      // Only he can write in it. Set, it takes the place of `music`'s cards.
+      musicPlayer: channels.musicPlayer || null,
+      // Voice channel the player's Add song and Radio buttons join when the
+      // bot isn't connected and whoever pressed them isn't in voice either.
+      // Unused by the slash commands, which follow the caller.
       defaultVoice: channels.defaultVoice || null,
       // Where privileged command invocations are mirrored, so admins can see
       // what staff did without reading logs/commands.jsonl on the host. Every
@@ -543,7 +548,7 @@ function aiOffLimits(guildId, channel) {
 }
 
 /**
- * The guild the control API and other single-guild surfaces act on.
+ * The guild the single-guild surfaces act on.
  * Explicit override first, then the legacy env var, then the only configured
  * guild if there happens to be exactly one.
  */

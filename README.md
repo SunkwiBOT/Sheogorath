@@ -1,7 +1,7 @@
 
 # Sheogorath Discord Bot
 
-Sheogorath is a multi-guild Discord bot built around an Elder Scrolls Mad God persona. It combines AI chat and image generation (Grok/xAI), a YouTube music player with a companion web app, and a UFC fight-night suite.
+Sheogorath is a multi-guild Discord bot built around an Elder Scrolls Mad God persona. It combines AI chat and image generation (Grok/xAI), a YouTube music player with a channel of its own, and a UFC fight-night suite.
 
 Each Discord server the bot serves gets its own entry in `config/guilds.json`, with a `features` list deciding what actually runs there — so the main hall and the community server share one process without sharing surfaces.
 
@@ -10,6 +10,7 @@ Each Discord server the bot serves gets its own entry in `config/guilds.json`, w
 - **AI Chat**: Talk to Sheogorath in character using Grok (xAI). The persona keeps per-user notes and long-term memories across conversations, and can act on the server through embedded action tags (warn, timeout, delete, remember). He answers on a mention or on his name anywhere, and unprompted in the help channel.
 - **Image Generation**: `/imagine` conjures images through Grok, with the Mad God riffing on your prompt first.
 - **Music Streaming**: Play YouTube music in voice channels — URL or search phrase — with a queue, saved playlists, autoplay, and a radio list loaded from `radio.csv`.
+- **Music Player Channel**: A channel only Sheogorath can write in, holding one message he keeps editing: the picture of the song that's playing, how far in it is, the volume, autoplay and the queue, with buttons underneath to stop, pause, skip, change the volume, add a song, queue from the radio, clear the line or take one song out of it. Nothing new is posted per song, and anything else that lands in the channel is deleted. It replaced the companion web page, which was shut down on 2026-11-03.
 - **UFC Pick'em**: Each card is posted in fight week for everyone to call the winners, each fight locked as it starts, and scored from ESPN's results into a season table. The best picker each week wears a title.
 - **UFC Results**: Every fight on every UFC card and Contender Series night, posted in a channel of its own as it ends: how it ended, the judges' scorecards, both fighters' stats side by side, and the whole card in one message once the main event is done.
 - **UFC Reminders**: A DM to everyone in a chosen role half an hour before each UFC card starts.
@@ -17,7 +18,6 @@ Each Discord server the bot serves gets its own entry in `config/guilds.json`, w
 - **Drops**: Twitch and Kick drops for the games the server plays, posted as each campaign appears with its rewards, watch times and end date. Anyone can follow another game with `/drops add`.
 - **Clips**: Post a gameplay clip in the clips channel and Sheogorath watches it and posts it back with himself doing commentary over it, in his own voice. Any clip anywhere can also be put through the **Wabbajack** from the Apps menu, and comes back as something else.
 - **Playtest**: A pinned post with an **I agree** button. Pressing it gives the Tester role, which opens the testers' channel, and records who agreed, and when, in a private channel. In the testers' channel, download buttons hand each tester a short-lived link to the newest build.
-- **Companion Control API**: An Express + WebSocket server (`src/api/`) serving a small web page that drives playback from a phone. Guest and admin credential tiers; bound to the tailnet, not the LAN.
 - **Moderation**: Discord native AutoMod rules, an Ollama-backed filter for sexual ASCII/Unicode text art that keyword rules can't catch, and Sheogorath himself acting as a moderator — everything he decides to do passes through a permission gate that either performs it, holds it for a Sheriff to approve, or refuses it.
 - **Instagram Mirroring**: Reels posted in chat are downloaded and re-uploaded natively, compressed to the guild's boost-tier attachment limit.
 - **X/Twitter Mirroring**: Video from posted X links is downloaded with yt-dlp and re-uploaded the same way. Text and photo posts are left to Discord's own embed.
@@ -58,7 +58,9 @@ Commands are loaded from `src/commands/*.js`. Two things decide whether a comman
 - `/settledebate` - Sheogorath reads the last 20 messages, checks the claims on the web and rules on who is right (needs the `ai` feature)
 
 ### 🎵 Music
-*Requires the `music` feature, and bot admin — music controls are admin-only, including the now-playing buttons.*
+*Requires the `music` feature, and bot admin — music controls are admin-only, including the now-playing buttons and the music player channel's.*
+
+A guild with `channels.musicPlayer` set gets the music player channel (`src/music/panel.js`): the player message is posted there once, and its ID kept in `data/music-player.json` so a restart edits the same one. Add song and Radio join the voice channel he is already in, else the presser's, else `channels.defaultVoice`. A guild without it gets a now-playing card in `channels.music` for each song instead.
 
 - `/play <query>` - Play a YouTube song by URL or search phrase
 - `/pause` - Pause the current song
@@ -394,7 +396,7 @@ what has been withheld.
 
 ### Credentials — `.env`
 
-See `.env.example` for the annotated list. In short: `DISCORD_TOKEN`, `CLIENT_ID`, `GUILD_ID` and `ADMIN_USER_ID` for Discord; `GROK_API_KEY` plus `CLIENT_NAME`, `CLIENT_INSTRUCTIONS` and `CLIENT_MODEL` for the AI persona; `OLLAMA_URL` / `OLLAMA_MOD_MODEL` for the text-image filter; `CONTROL_API_*` and `CONTROL_GUEST_PASSWORD` for the companion app; `ERROR_CHANNEL_ID` (without it, or once that channel is gone, errors go to `ADMIN_USER_ID` by DM) and `LOG_LEVEL` optionally.
+See `.env.example` for the annotated list. In short: `DISCORD_TOKEN`, `CLIENT_ID`, `GUILD_ID` and `ADMIN_USER_ID` for Discord; `GROK_API_KEY` plus `CLIENT_NAME`, `CLIENT_INSTRUCTIONS` and `CLIENT_MODEL` for the AI persona; `OLLAMA_URL` / `OLLAMA_MOD_MODEL` for the text-image filter; `CONTROL_API_PORT` / `CONTROL_API_HOST` for the WARDOGS sign-in server; `ERROR_CHANNEL_ID` (without it, or once that channel is gone, errors go to `ADMIN_USER_ID` by DM) and `LOG_LEVEL` optionally.
 
 ### Per-guild settings — `config/guilds.json`
 

@@ -138,6 +138,8 @@ module.exports = {
     }
   },
 
-  // Export helper for removing tracks
+  // Helpers for the music player's Radio and Drop from radio buttons.
   removeTrackFromRadio,
+  loadRadioTracks,
+  shuffle,
 };

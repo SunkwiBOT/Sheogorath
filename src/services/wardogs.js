@@ -7,7 +7,7 @@
  * Steam account. So a player links like this:
  *
  *   1. /wardogs link hands them a one-time link to /wardogs/login on the
- *      control API (public through Tailscale Funnel, WARDOGS_PUBLIC_URL).
+ *      bot's web server (public through Tailscale Funnel, WARDOGS_PUBLIC_URL).
  *   2. That redirects to Steam's own sign-in page. We never see a password.
  *   3. Steam sends the browser back to /wardogs/callback with a signed
  *      assertion of their Steam ID. We pass it to Pragma exactly as the
@@ -364,7 +364,7 @@ async function leaderboardEmbed(guild, metricKey) {
 }
 
 // ---------------------------------------------------------------------------
-// HTTP routes, mounted on the control API at /wardogs
+// HTTP routes, mounted on the bot's web server (api/server.js) at /wardogs
 // ---------------------------------------------------------------------------
 
 const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (c) => ({

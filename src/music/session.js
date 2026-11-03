@@ -3,9 +3,9 @@
  * Shared playback session logic.
  *
  * This used to live inside commands/play.js, which meant it could only be
- * driven by a Discord interaction. The control API needs the same queue
- * advancement, autoplay and now-playing behaviour without an interaction to
- * hang it off, so it lives here and both surfaces call in.
+ * driven by a slash command. The music player channel's buttons (panel.js)
+ * need the same queue advancement, autoplay and now-playing behaviour, and
+ * playback outlives any one interaction, so it lives here and both call in.
  */
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType } = require('discord.js');
 const {
@@ -20,9 +20,11 @@ const {
   endPlayback,
   playbackEpoch,
   abandonPlayback,
+  emitState,
 } = require('./player');
 const { createNowPlayingEmbed } = require('./embeds');
 const { channelId } = require('../config/guilds');
+const { hasPanel, refreshPanel, panelNotice } = require('./panel');
 
 // Track last now playing message to keep channel clean
 const lastNowPlayingMessages = new Map(); // guildId -> messageId
@@ -50,10 +52,29 @@ function buildControlRow() {
 }
 
 /**
+ * Note on the playing song who queued it and the name it was queued under.
+ * play() only sees the URL. The player shows the first, and its Drop from
+ * radio button needs the second: the radio list's "Artist - Track", which
+ * YouTube's own title for the video rarely matches.
+ */
+function markNowPlaying(guildId, song) {
+  const nowPlaying = getQueue(guildId).nowPlaying;
+  if (!nowPlaying || !song) return;
+  nowPlaying.addedBy = song.addedBy || null;
+  nowPlaying.entryTitle = song.title || song.query || null;
+  emitState(guildId);
+}
+
+/**
  * Post the now-playing embed to the music channel, clearing prior messages so
- * the channel stays a single live "player" rather than a scrolling log.
+ * the channel stays a single live "player" rather than a scrolling log. A guild
+ * with a music player channel has that redrawn instead.
  */
 async function postNowPlaying(client, guildId, fallbackSong, addedBy) {
+  if (hasPanel(guildId)) {
+    refreshPanel(guildId);
+    return;
+  }
   const musicChannelId = channelId(guildId, 'music');
   if (!musicChannelId) return;
   const channel = await client.channels.fetch(musicChannelId).catch(() => null);
@@ -91,8 +112,16 @@ async function postNowPlaying(client, guildId, fallbackSong, addedBy) {
 // one yt-dlp outage would chew through a 100-song queue in seconds, silently.
 const MAX_CONSECUTIVE_FAILURES = 3;
 
-/** Post a one-off notice to the guild's music channel, if one is configured. */
+/**
+ * Post a one-off notice to the guild's music channel, if one is configured. A
+ * guild with a music player channel shows it on the player instead, which
+ * takes no new messages.
+ */
 async function sendToMusicChannel(client, guildId, content) {
+  if (hasPanel(guildId)) {
+    panelNotice(guildId, content);
+    return;
+  }
   const musicChannelId = channelId(guildId, 'music');
   if (!musicChannelId) return;
   const channel = await client.channels.fetch(musicChannelId).catch(() => null);
@@ -167,6 +196,7 @@ async function playNextInQueue(client, connection, guildId) {
           return;
         }
         players.set(guildId, player);
+        markNowPlaying(guildId, nextSong);
         await postNowPlaying(client, guildId, nextSong, nextSong.addedBy);
         return;
       } catch (err) {
@@ -210,6 +240,7 @@ async function startPlayback(client, connection, guildId, song) {
       return null;
     }
     players.set(guildId, player);
+    markNowPlaying(guildId, song);
     await postNowPlaying(client, guildId, song, song.addedBy);
     return player;
   } finally {
@@ -220,9 +251,10 @@ async function startPlayback(client, connection, guildId, song) {
 }
 
 /**
- * Resolve a voice connection for API-driven playback, which has no invoking
- * member to read a voice state from. Prefers an existing connection so we never
- * yank the bot out of a channel people are already listening in.
+ * Resolve a voice connection to the guild's default voice channel, for the
+ * music player's buttons when the presser is not in voice. Prefers an existing
+ * connection so we never yank the bot out of a channel people are already
+ * listening in.
  */
 async function ensureVoiceConnection(client, guildId) {
   const existing = getConnection({ id: guildId });
