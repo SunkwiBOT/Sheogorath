@@ -48,6 +48,7 @@ const { scheduleUfcEvents } = require('./services/ufc');
 const { scheduleGameNews } = require('./services/gameNews');
 const { scheduleWardogsGold } = require('./services/wardogsGold');
 const { scheduleWardogsPlayers } = require('./services/wardogsPlayers');
+const { scheduleWowRace } = require('./services/wowRace');
 const { schedulePresserWatch } = require('./services/ufcPresser');
 const { schedulePickem, isPickemButton, handleButton: handlePickemButton } = require('./services/pickem');
 const { scheduleUfcResults } = require('./services/ufcResults');
@@ -257,6 +258,13 @@ client.once(Events.ClientReady, async () => {
     scheduleWardogsPlayers();
   } catch (err) {
     console.error('[WardogsPlayers] Failed to schedule the player count:', err?.message || err);
+  }
+
+  // The WoW Forever race to 60: linked characters' levels, read every ten minutes.
+  try {
+    scheduleWowRace(client);
+  } catch (err) {
+    console.error('[WowRace] Failed to schedule the race:', err?.message || err);
   }
 
   // Weekly UFC card events. Same isolation: ESPN being down is not a boot failure.

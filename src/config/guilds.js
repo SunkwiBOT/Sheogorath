@@ -381,6 +381,16 @@ function normalizeGuild(id, raw) {
       channel: SNOWFLAKE.test(String(raw.wardogsGold?.channel || '')) ? raw.wardogsGold.channel : null,
       pingRole: SNOWFLAKE.test(String(raw.wardogsGold?.pingRole || '')) ? raw.wardogsGold.pingRole : null,
     },
+    // The WoW Forever race to 60 (services/wowRace.js), where the `wow`
+    // feature is on: each member's milestones and the first to 60 posted in
+    // `channel`, and `title` hung on whoever gets there first. Unset channel,
+    // only /wow race shows the standings.
+    wow: {
+      channel: SNOWFLAKE.test(String(raw.wow?.channel || '')) ? raw.wow.channel : null,
+      title: typeof raw.wow?.title === 'string' && raw.wow.title.trim()
+        ? raw.wow.title.replace(/\s+/g, ' ').trim().slice(0, 90)
+        : null,
+    },
     // Voice log (services/voiceLog.js), where the `voiceLog` feature is on.
     // Every join, leave and move is kept for `keepDays` and read back with
     // /vclog; `channel`, when set, also gets each one posted as it happens.

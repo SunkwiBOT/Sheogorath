@@ -1,6 +1,7 @@
 'use strict';
 const { SlashCommandBuilder, MessageFlags, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const battlenet = require('../services/battlenet');
+const wowRace = require('../services/wowRace');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -16,6 +17,10 @@ module.exports = {
     .addSubcommand((sub) => sub
       .setName('friends')
       .setDescription('Everyone here who has linked, with their BattleTags')
+      .addBooleanOption((o) => o.setName('post').setDescription('Post it in the channel for everyone (default: just you)')))
+    .addSubcommand((sub) => sub
+      .setName('race')
+      .setDescription('The race to 60: everyone here who has linked, by their highest character')
       .addBooleanOption((o) => o.setName('post').setDescription('Post it in the channel for everyone (default: just you)')))
     .addSubcommand((sub) => sub
       .setName('unlink')
@@ -63,6 +68,13 @@ module.exports = {
       const post = interaction.options.getBoolean('post') === true;
       await interaction.deferReply(post ? {} : { flags: MessageFlags.Ephemeral });
       const embed = await battlenet.friendsEmbed(interaction.guild);
+      return interaction.editReply({ embeds: [embed], allowedMentions: { parse: [] } });
+    }
+
+    if (sub === 'race') {
+      const post = interaction.options.getBoolean('post') === true;
+      await interaction.deferReply(post ? {} : { flags: MessageFlags.Ephemeral });
+      const embed = await wowRace.raceEmbed(interaction.guild);
       return interaction.editReply({ embeds: [embed], allowedMentions: { parse: [] } });
     }
 

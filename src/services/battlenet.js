@@ -153,15 +153,51 @@ function text(v) {
   return null;
 }
 
+/** The realm slug from a character's API link, `/profile/wow/character/{realm}/{name}`, when it has one. */
+function slugFromHref(href) {
+  const m = /\/profile\/wow\/character\/([^/?]+)\//.exec(String(href || ''));
+  return m && m[1] !== 'null' ? decodeURIComponent(m[1]) : null;
+}
+
+/**
+ * One character from the account profile. Before Forever launched, Blizzard
+ * sent its characters with no realm at all; `realmSlug` stays null until one
+ * is known, and services/wowRace.js finds it once the realm list exists.
+ */
 function character(c) {
   return {
+    id: c?.id != null ? String(c.id) : null,
     name: text(c?.name),
     realm: text(c?.realm?.name) || c?.realm?.slug || null,
+    realmSlug: c?.realm?.slug || slugFromHref(c?.key?.href) || null,
     level: Number(c?.level) || 0,
     class: text(c?.playable_class?.name),
     race: text(c?.playable_race?.name),
     faction: text(c?.faction?.name),
   };
+}
+
+/**
+ * A fresh character list, keeping what the race board learned about the ones
+ * already known: the realm it found and when each reached its level, so a
+ * re-link doesn't reset anyone's place.
+ */
+function mergeCharacters(prev, next, now) {
+  const key = (c) => c.id || `${c.name}@${c.realmSlug || c.realm || ''}`.toLowerCase();
+  const old = new Map((prev || []).map((c) => [key(c), c]));
+  return next.map((c) => {
+    const was = old.get(key(c));
+    if (!was) return { ...c, levelAt: now };
+    const level = Math.max(c.level, was.level || 0);
+    return {
+      ...was,
+      ...c,
+      realm: c.realm || was.realm || null,
+      realmSlug: c.realmSlug || was.realmSlug || null,
+      level,
+      levelAt: level === was.level ? (was.levelAt || now) : now,
+    };
+  });
 }
 
 function namespacesToTry() {
@@ -241,7 +277,9 @@ async function completeLink(query) {
         updatedAt: now,
         // A sign-in where no namespace answered keeps what an earlier one found.
         namespace: forever.namespace || (same ? prev.namespace : null) || null,
-        characters: forever.namespace ? forever.characters : (same ? prev.characters || [] : []),
+        characters: forever.namespace
+          ? mergeCharacters(same ? prev.characters : [], forever.characters, now)
+          : (same ? prev.characters || [] : []),
       };
       db.links[link.userId] = next;
       return next;
@@ -268,6 +306,19 @@ async function completeLink(query) {
 
 function getLink(userId) {
   return store.read().links?.[userId] || null;
+}
+
+/** Every link, by Discord user ID. For the race board. */
+function allLinks() {
+  return store.read().links || {};
+}
+
+/** Change the links in one write. For the race board, which keeps levels on them. */
+function updateLinks(mutate) {
+  return store.update((db) => {
+    db.links ||= {};
+    return mutate(db.links);
+  });
 }
 
 function unlink(userId) {
@@ -368,11 +419,19 @@ module.exports = {
   completeLink,
   missingSetup,
   getLink,
+  allLinks,
+  updateLinks,
   unlink,
   profileEmbed,
   friendsEmbed,
+  membersOf,
   routes,
+  region,
+  failure,
+  OAUTH_HOST,
+  COLOR,
   // For tests.
   character,
+  mergeCharacters,
   namespacesToTry,
 };
