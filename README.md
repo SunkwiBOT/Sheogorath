@@ -15,6 +15,7 @@ Each Discord server the bot serves gets its own entry in `config/guilds.json`, w
 - **UFC Results**: Every fight on every UFC card and Contender Series night, posted in a channel of its own as it ends: how it ended, the judges' scorecards, both fighters' stats side by side, and the whole card in one message once the main event is done.
 - **UFC Reminders**: A DM to everyone in a chosen role half an hour before each UFC card starts.
 - **Events**: Anyone can put an event on the server calendar with `/event` or by telling Sheogorath, and whoever added it (or an Owner) can move it or take it off, with no config edit and no deploy. Fifteen minutes before any scheduled event, the people who clicked Interested are pinged and a thread is opened for it.
+- **WoW Forever**: Members link their Battle.net account with `/wow link`, signing in on Battle.net's own page, and `/wow friends` lists everyone's BattleTag so the server can add each other in one go. Once Blizzard opens Forever's characters to its API, the same link lists each person's characters and levels.
 - **Drops**: Twitch and Kick drops for the games the server plays, posted as each campaign appears with its rewards, watch times and end date. Anyone can follow another game with `/drops add`.
 - **Clips**: Post a gameplay clip in the clips channel and Sheogorath watches it and posts it back with himself doing commentary over it, in his own voice. Any clip anywhere can also be put through the **Wabbajack** from the Apps menu, and comes back as something else.
 - **Playtest**: A pinned post with an **I agree** button. Pressing it gives the Tester role, which opens the testers' channel, and records who agreed, and when, in a private channel. In the testers' channel, download buttons hand each tester a short-lived link to the newest build.
@@ -162,6 +163,22 @@ Every half hour, with the game news, both sites are read. Each new campaign for 
 A game matches when every word of its name appears, in order, in the site's name for the game: *Rust* matches *Rust Console Edition* but not *Rusty Lake*, and *Dawn of War IV* matches *Warhammer 40,000: Dawn of War IV*. Follow *RuneScape* and *Old School RuneScape*'s drops come with it. Where two followed games both match, the one naming more words has it: with *Path of Exile* and *Path of Exile 2* both followed, a Path of Exile 2 campaign is posted and listed under that alone.
 
 Neither site offers drops through its official API. Twitch's come from [twitch-drops-api.sunkwi.com](https://twitch-drops-api.sunkwi.com/drops), a community mirror of the campaign list, and Kick's from the endpoint kick.com's own drops page reads. Neither needs a key, and both are undocumented, so either may change or vanish: a site that can't be read is logged and skipped, the other still posts, and `/drops list` says which one is missing.
+
+### ⚔️ WoW Forever
+*Requires the `wow` feature, `PUBLIC_URL`, `BLIZZARD_CLIENT_ID` and `BLIZZARD_CLIENT_SECRET`.*
+
+- `/wow link` - Sign in with Battle.net to link your account, or to refresh your characters
+- `/wow whois [who]` - Someone's BattleTag and WoW Forever characters (you by default)
+- `/wow friends [post]` - Everyone in the server who has linked, with their BattleTag and highest character; `post:True` puts it in the channel instead of showing just you
+- `/wow unlink` - Forget your Battle.net account
+
+Linking works like `/wardogs link` did with Steam (`src/services/battlenet.js`). The command hands a one-time link, good for ten minutes, to `/wow/login` on the bot's web server, which sends the browser on to Battle.net's own sign-in and consent page; the bot never sees a password. Battle.net sends it back to `/wow/callback` with a code, which is traded for a token. The bot asks Battle.net for the BattleTag and the account's WoW Forever characters, keeps those in `data/battlenet.json`, and drops the token: it lasts a day and cannot be renewed, so nothing holds one. Characters refresh when someone links again, which is one click once Battle.net remembers them. One Battle.net account belongs to one member; whoever signed in with it last has it.
+
+Everyone in the server can see a linked member's BattleTag, and `/wow link` says so before they sign in. Replies are seen only by whoever asked, unless `/wow friends` is told to post. Members who have left are not listed.
+
+**Forever's characters.** At launch (2026-11-04) Blizzard had not published the API namespace that WoW Forever's characters live under, so each link tries `BLIZZARD_FOREVER_NAMESPACE` when it is set, else a few likely names, and the log says which answered (`[Battle.net] profile-forever-us answered with 2 character(s).`). When none does, the BattleTag is still linked and `/wow whois` says characters are not readable yet. Once Blizzard names the namespace, set it in `.env`, and anyone who runs `/wow link` again gets their characters. Classic Era's `profile-classic1x` is not guessed, because those are another game's characters.
+
+**Setting it up.** Make a client at [develop.battle.net](https://develop.battle.net/access/clients) with its Redirect URL exactly `<PUBLIC_URL>/wow/callback`, and put its ID and secret in `.env`. `PUBLIC_URL` is the web server's public HTTPS address: the same Tailscale Funnel the WARDOGS sign-in used, and `WARDOGS_PUBLIC_URL` is read when it is unset. The web server starts whenever a guild has `wow` on.
 
 ### 🔒 Playtest agreement
 *Requires a `playtest` block.*
@@ -398,7 +415,7 @@ what has been withheld.
 
 ### Credentials — `.env`
 
-See `.env.example` for the annotated list. In short: `DISCORD_TOKEN`, `CLIENT_ID`, `GUILD_ID` and `ADMIN_USER_ID` for Discord; `GROK_API_KEY` plus `CLIENT_NAME`, `CLIENT_INSTRUCTIONS` and `CLIENT_MODEL` for the AI persona; `OLLAMA_URL` / `OLLAMA_MOD_MODEL` for the text-image filter; `CONTROL_API_PORT` / `CONTROL_API_HOST` for the WARDOGS sign-in server; `ERROR_CHANNEL_ID` (without it, or once that channel is gone, errors go to `ADMIN_USER_ID` by DM) and `LOG_LEVEL` optionally.
+See `.env.example` for the annotated list. In short: `DISCORD_TOKEN`, `CLIENT_ID`, `GUILD_ID` and `ADMIN_USER_ID` for Discord; `GROK_API_KEY` plus `CLIENT_NAME`, `CLIENT_INSTRUCTIONS` and `CLIENT_MODEL` for the AI persona; `OLLAMA_URL` / `OLLAMA_MOD_MODEL` for the text-image filter; `CONTROL_API_PORT` / `CONTROL_API_HOST` for the sign-in web server; `PUBLIC_URL`, `BLIZZARD_CLIENT_ID` and `BLIZZARD_CLIENT_SECRET` for `/wow`; `ERROR_CHANNEL_ID` (without it, or once that channel is gone, errors go to `ADMIN_USER_ID` by DM) and `LOG_LEVEL` optionally.
 
 ### Per-guild settings — `config/guilds.json`
 
@@ -408,7 +425,7 @@ One entry per Discord server, holding that guild's `features` list, channel IDs,
 
 `channels.modApprovals` is where Sheogorath posts what he wants permission to do and what he did on his own; it falls back to `channels.commandLog` when unset, so a guild with one private staff channel doesn't need a second.
 
-Available features: `ai`, `music`, `moderation`, `automod`, `textImageMod`, `instagram`, `twitter`, `tiktok`, `reddit`, `pickem`, `events`, `ledger`, `wardogs`, `clips`, `drops`, `voiceLog`.
+Available features: `ai`, `music`, `moderation`, `automod`, `textImageMod`, `instagram`, `twitter`, `tiktok`, `reddit`, `pickem`, `events`, `ledger`, `wardogs`, `wow`, `clips`, `drops`, `voiceLog`.
 
 `timeZone` (an IANA name, default `America/Chicago`) is where a guild's people live: what "Friday 8pm" means in `/event` and in chat, and the clock Sheogorath is told the time by.
 

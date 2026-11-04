@@ -27,6 +27,7 @@ const path = require('path');
 const axios = require('axios');
 const { EmbedBuilder } = require('discord.js');
 const { jsonFile } = require('../storage/jsonFile');
+const { page } = require('../api/page');
 
 const GAME_HOST = 'https://game.live.wardogs.bulkhead.pragmaengine.com';
 const SOCIAL_HOST = 'https://social.live.wardogs.bulkhead.pragmaengine.com';
@@ -366,18 +367,6 @@ async function leaderboardEmbed(guild, metricKey) {
 // ---------------------------------------------------------------------------
 // HTTP routes, mounted on the bot's web server (api/server.js) at /wardogs
 // ---------------------------------------------------------------------------
-
-const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (c) => ({
-  '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
-}[c]));
-
-function page(title, body) {
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${escapeHtml(title)}</title><style>
-body{font-family:system-ui,sans-serif;background:#1e1f22;color:#dbdee1;display:grid;place-items:center;min-height:100vh;margin:0;padding:16px;box-sizing:border-box}
-main{max-width:420px;text-align:center}h1{font-size:1.4rem}p{line-height:1.5;color:#b5bac1}
-</style></head><body><main><h1>${escapeHtml(title)}</h1><p>${escapeHtml(body)}</p></main></body></html>`;
-}
 
 function routes() {
   const express = require('express');

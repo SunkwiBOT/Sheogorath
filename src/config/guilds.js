@@ -45,6 +45,7 @@ const FEATURES = [
   'wardogs',      // /wardogs: WARDOGS stats by Steam sign-in (needs WARDOGS_PUBLIC_URL)
   'wardogsGold',  // /gold, and the WARDOGS gold bar price posted each day it moves (needs a wardogsGold block)
   'wardogsPlayers', // /wardogsplayers: how many are playing WARDOGS on Steam, read every 10 minutes, with a graph
+  'wow',          // /wow: Battle.net sign-in, BattleTags and WoW Forever characters (needs PUBLIC_URL and BLIZZARD_*)
   'clips',        // his commentary over clips, and the Wabbajack (needs ffmpeg; commentary needs ELEVENLABS_*)
   'drops',        // /drops, and Twitch and Kick drops posted for the games we play (needs a gameNews block)
   'voiceLog',     // who joined, left and moved between voice channels, and when; /vclog (staff)

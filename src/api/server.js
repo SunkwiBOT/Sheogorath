@@ -1,8 +1,13 @@
 'use strict';
 /**
- * The bot's web server. All that is left on it is the WARDOGS Steam sign-in
- * (/wardogs), so it starts only while some guild has the `wardogs` feature on,
- * which none does since that feature was switched off on 2026-09-30.
+ * The bot's web server. All that is on it is the sign-ins that need a page
+ * a browser can come back to:
+ *
+ *   /wardogs  the WARDOGS Steam sign-in, while some guild has `wardogs` on
+ *             (none has since that feature was switched off on 2026-09-30)
+ *   /wow      the Battle.net sign-in for /wow, while some guild has `wow` on
+ *
+ * It starts only while one of them is wanted.
  *
  * It used to serve the companion music page and its control API too. Those
  * were shut down on 2026-11-03, when the music player channel (music/panel.js)
@@ -11,6 +16,7 @@
 const http = require('http');
 const express = require('express');
 const wardogs = require('../services/wardogs');
+const battlenet = require('../services/battlenet');
 const { guildIds, hasFeature } = require('../config/guilds');
 
 const PORT = Number(process.env.CONTROL_API_PORT) || 3005;
@@ -23,15 +29,19 @@ const HOST = process.env.CONTROL_API_HOST || '127.0.0.1';
  * throwing) otherwise, so it can never take the Discord bot down with it.
  */
 function startWebServer() {
-  if (!guildIds().some((id) => hasFeature(id, 'wardogs'))) return null;
+  const wanted = (feature) => guildIds().some((id) => hasFeature(id, feature));
+  const wardogsOn = wanted('wardogs');
+  const wowOn = wanted('wow');
+  if (!wardogsOn && !wowOn) return null;
 
   const app = express();
   app.disable('x-powered-by');
 
-  // Steam sign-in for /wardogs link. Unauthenticated on purpose: Steam sends
-  // the player's browser here, and a one-time nonce from the command is the
-  // only thing that gets a request past /login.
-  app.use('/wardogs', wardogs.routes());
+  // The sign-ins are unauthenticated on purpose: Steam and Battle.net send the
+  // member's browser here, and a one-time nonce from the command is the only
+  // thing that gets a request past /login and /callback.
+  if (wardogsOn) app.use('/wardogs', wardogs.routes());
+  if (wowOn) app.use('/wow', battlenet.routes());
 
   app.use((req, res) => res.status(404).json({ error: 'Not found' }));
 

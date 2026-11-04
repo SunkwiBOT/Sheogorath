@@ -187,8 +187,9 @@ client.once(Events.ClientReady, async () => {
     console.error('[MusicPanel] Failed to start:', err?.message || err);
   }
 
-  // The web server, for the WARDOGS Steam sign-in only, and only while that
-  // feature is on somewhere. Failure here must not take the bot down.
+  // The web server, for the WARDOGS Steam and Battle.net sign-ins, and only
+  // while one of those features is on somewhere. Failure here must not take
+  // the bot down.
   try {
     startWebServer(client);
   } catch (err) {

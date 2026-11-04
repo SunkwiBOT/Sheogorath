@@ -44,6 +44,8 @@ const COMMAND_FEATURES = {
   gold: 'wardogsGold',
   wardogsplayers: 'wardogsPlayers',
 
+  wow: 'wow',
+
   vclog: 'voiceLog',
   // The message menu's commands, which Discord names by their labels.
   'Keep in the Ledger': 'ledger',

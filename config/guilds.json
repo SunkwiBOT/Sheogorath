@@ -20,7 +20,8 @@
       "wardogsGold",
       "wardogsPlayers",
       "voiceLog",
-      "activity"
+      "activity",
+      "wow"
     ],
     "channels": {
       "musicPlayer": "1567275568523776242",
