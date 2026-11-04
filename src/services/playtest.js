@@ -63,7 +63,8 @@ function buildDownloadsMessage(guildId) {
     .setDescription(
       'Press the button for your computer for the newest build. The link you get is yours alone and stops ' +
       'working within the hour, so do not pass it on: anyone who needs the game gets it here.\n\n' +
-      'Everyone needs the same build to play together, so download it again when a new one is announced. ' +
+      'You only download it once: the game updates itself to the newest build every time it starts, and each ' +
+      'new build is announced below. ' +
       'The first time it opens, the game asks you to sign its NDA, with Steam running.'
     );
   const row = new ActionRowBuilder().addComponents(

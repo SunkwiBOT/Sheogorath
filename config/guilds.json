@@ -411,13 +411,13 @@
             "label": "Windows",
             "emoji": "🪟",
             "asset": "GrimeAndPunishment-Windows.zip",
-            "how": "Unzip it and run GrimeAndPunishment.exe, keeping the files next to it. If Windows warns about an unknown publisher, click More info, then Run anyway."
+            "how": "Unzip it somewhere of your own, like Documents (not Program Files, or it can't update itself), and run GrimeAndPunishment.exe, keeping the files next to it. If Windows warns about an unknown publisher, click More info, then Run anyway."
           },
           {
             "label": "Mac",
             "emoji": "🍎",
             "asset": "GrimeAndPunishment-macOS.zip",
-            "how": "Unzip it and drag Grime & Punishment into Applications. The first time, macOS blocks it: open System Settings, Privacy & Security, scroll down and click Open Anyway."
+            "how": "Unzip it and drag Grime & Punishment into Applications before you open it (or it can't update itself). The first time, macOS blocks it: open System Settings, Privacy & Security, scroll down and click Open Anyway."
           },
           {
             "label": "Linux",
@@ -428,7 +428,7 @@
         ],
         "channel": "1560045630376775830"
       },
-      "limit": 20,
+      "limit": 30,
       "uncounted": [
         "1560045617206788120",
         "1560054572104556647",

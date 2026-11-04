@@ -7,13 +7,14 @@
  *
  * Once is enough: the buttons carry no message ID and nothing is kept in
  * memory, so a posted message keeps working across restarts. Run it again only
- * to replace a deleted post, or after changing its wording (then delete the
- * old one by hand).
+ * to replace a deleted post, or after changing its wording: --edit with the
+ * posted message's ID rewrites that one in place, keeping its pin and its spot.
  *
  * REST only, no gateway login: posting needs nothing the live bot is doing.
  *
  *   node scripts/post-playtest.js <guildId> [--downloads]            # what would be posted, and where
  *   node scripts/post-playtest.js <guildId> [--downloads] --apply
+ *   node scripts/post-playtest.js <guildId> [--downloads] --edit <messageId> [--apply]
  */
 require('dotenv').config();
 const { REST, Routes } = require('discord.js');
@@ -23,6 +24,7 @@ const { buildMessage, buildDownloadsMessage } = require('../src/services/playtes
 const GUILD = process.argv.find((a) => /^\d{17,20}$/.test(a));
 const APPLY = process.argv.includes('--apply');
 const DOWNLOADS = process.argv.includes('--downloads');
+const EDIT = process.argv.includes('--edit') ? process.argv[process.argv.indexOf('--edit') + 1] : null;
 
 (async () => {
   if (!GUILD) return console.log('Which guild? node scripts/post-playtest.js <guildId> [--downloads] [--apply]');
@@ -34,10 +36,15 @@ const DOWNLOADS = process.argv.includes('--downloads');
   const msg = DOWNLOADS ? buildDownloadsMessage(GUILD) : buildMessage(GUILD);
   if (!msg) return console.log('Nothing to post: check the playtest block.');
   const body = { embeds: msg.embeds.map((e) => e.toJSON()), components: msg.components.map((c) => c.toJSON()) };
-  console.log(`Posting in ${where}:\n${JSON.stringify(body, null, 2)}`);
-  if (!APPLY) return console.log('\n(Dry run. Add --apply to post it.)');
+  if (EDIT !== null && !/^\d{17,20}$/.test(EDIT || '')) return console.log('--edit needs the ID of the message to rewrite.');
+  console.log(`${EDIT ? `Rewriting ${EDIT}` : 'Posting'} in ${where}:\n${JSON.stringify(body, null, 2)}`);
+  if (!APPLY) return console.log(`\n(Dry run. Add --apply to ${EDIT ? 'rewrite' : 'post'} it.)`);
 
   const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
+  if (EDIT) {
+    await rest.patch(Routes.channelMessage(where, EDIT), { body });
+    return console.log(`Rewritten: ${EDIT}`);
+  }
   const posted = await rest.post(Routes.channelMessages(where), { body });
   console.log(`Posted: ${posted.id}`);
   try {
