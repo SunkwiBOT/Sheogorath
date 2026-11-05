@@ -5,7 +5,7 @@
  * Neither site offers drops through its official API. Helix has only the
  * entitlement endpoints a game's own developer uses, and Twitch's internal
  * GraphQL lists campaigns only to a signed-in viewer. So Twitch's come from
- * twitch-drops-api.sunkwi.com, a community mirror of the campaign list that
+ * drops.sunkwi.com, a community mirror of the campaign list that
  * needs no key, and Kick's from the endpoint its own drops page reads. Both are
  * undocumented and could change or vanish without notice, so a source that
  * fails is logged and skipped, and the other still posts.
@@ -32,7 +32,7 @@ const { getGuildConfig } = require('../config/guilds');
 const { getGuildState, setGuildState } = require('../storage/state');
 const { isAdmin } = require('../utils/permissions');
 
-const TWITCH_SOURCE = 'https://twitch-drops-api.sunkwi.com/drops';
+const TWITCH_SOURCE = 'https://drops.sunkwi.com/api/twitch/drops';
 const KICK_SOURCE = 'https://web.kick.com/api/v1/drops/campaigns';
 const USER_AGENT = 'Sheogorath/1.0 (Discord bot)';
 // Shared by every guild's poll and by /drops, so neither source is asked more
@@ -55,9 +55,9 @@ const validDate = (v) => {
 // --- Reading the two sources ----------------------------------------------------
 
 /** Twitch's campaigns, from the community mirror's per-game groups. */
-function fromTwitch(groups) {
+function fromTwitch(body) {
   const out = [];
-  for (const group of Array.isArray(groups) ? groups : []) {
+  for (const group of Array.isArray(body?.games) ? body.games : []) {
     for (const c of group?.rewards || []) {
       const start = validDate(c?.startAt);
       const end = validDate(c?.endAt);

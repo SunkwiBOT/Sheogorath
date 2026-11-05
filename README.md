@@ -162,7 +162,7 @@ Every half hour, with the game news, both sites are read. Each new campaign for 
 
 A game matches when every word of its name appears, in order, in the site's name for the game: *Rust* matches *Rust Console Edition* but not *Rusty Lake*, and *Dawn of War IV* matches *Warhammer 40,000: Dawn of War IV*. Follow *RuneScape* and *Old School RuneScape*'s drops come with it. Where two followed games both match, the one naming more words has it: with *Path of Exile* and *Path of Exile 2* both followed, a Path of Exile 2 campaign is posted and listed under that alone.
 
-Neither site offers drops through its official API. Twitch's come from [twitch-drops-api.sunkwi.com](https://twitch-drops-api.sunkwi.com/drops), a community mirror of the campaign list, and Kick's from the endpoint kick.com's own drops page reads. Neither needs a key, and both are undocumented, so either may change or vanish: a site that can't be read is logged and skipped, the other still posts, and `/drops list` says which one is missing.
+Neither site offers drops through its official API. Twitch's come from [drops.sunkwi.com](https://drops.sunkwi.com/docs), a community mirror of the campaign list, and Kick's from the endpoint kick.com's own drops page reads. Neither needs a key, and both are undocumented, so either may change or vanish: a site that can't be read is logged and skipped, the other still posts, and `/drops list` says which one is missing.
 
 ### ⚔️ WoW Forever
 *Requires the `wow` feature, `PUBLIC_URL`, `BLIZZARD_CLIENT_ID` and `BLIZZARD_CLIENT_SECRET`.*
