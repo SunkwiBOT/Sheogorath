@@ -16,13 +16,18 @@
  * holds one. Characters refresh when someone links again, which is one click
  * once Battle.net remembers them.
  *
- * Forever's characters: at launch (2026-11-04) Blizzard had not published the
- * API namespace they live under. Each link tries BLIZZARD_FOREVER_NAMESPACE
- * when it is set, else a few likely names, and logs which one answered. A link
- * where none does still records the BattleTag, which is all /wow friends needs.
+ * Forever's characters: Blizzard has not documented Forever's API. Each link
+ * tries BLIZZARD_FOREVER_NAMESPACE when it is set, else a few likely names,
+ * and logs which one answered; profile-forever-us did at launch. A link where
+ * none does still records the BattleTag, which is all /wow friends needs.
  * Classic Era's namespace (profile-classic1x) is not guessed: those are another
- * game's characters, and listing them as Forever ones would be wrong. If
- * Forever turns out to live there, set the variable to it.
+ * game's characters.
+ *
+ * Forever characters have a first name and a surname and no realm. Each comes
+ * with its own public profile link (/profile/wow/character/{name}-{surname}),
+ * kept as `path` for services/wowRace.js, and a protected-character link whose
+ * id is {realmId}-{characterId}. As of 2026-11-05 Blizzard answers 404 to both
+ * for everyone, so a level only moves when its owner links again.
  */
 const crypto = require('crypto');
 const path = require('path');
@@ -159,17 +164,54 @@ function slugFromHref(href) {
   return m && m[1] !== 'null' ? decodeURIComponent(m[1]) : null;
 }
 
+/** The realm ID and character ID in a protected-character link, `.../protected-character/{realmId}-{characterId}`. */
+function protectedIds(href) {
+  const m = /\/protected-character\/(\d+)-(\d+)/.exec(String(href || ''));
+  return m ? { realmId: m[1], characterId: m[2] } : null;
+}
+
+function decoded(part) {
+  try {
+    return decodeURIComponent(part);
+  } catch {
+    return null;
+  }
+}
+
 /**
- * One character from the account profile. Before Forever launched, Blizzard
- * sent its characters with no realm at all; `realmSlug` stays null until one
- * is known, and services/wowRace.js finds it once the realm list exists.
+ * The API path of a character's public profile, from the link Blizzard sends
+ * with it: `/profile/wow/character/{name}-{surname}` for Forever, or
+ * `/profile/wow/character/{realm}/{name}`. Rebuilt part by part, so a strange
+ * link can't point the bot anywhere else.
  */
+function pathFromHref(href) {
+  const m = /\/profile\/wow\/character\/([^?#]+)/.exec(String(href || ''));
+  if (!m) return null;
+  const parts = m[1].split('/').filter(Boolean).map(decoded);
+  if (!parts.length || parts.length > 2) return null;
+  if (parts.some((p) => !p || p === '.' || p === '..' || p === 'null')) return null;
+  return `/profile/wow/character/${parts.map((p) => encodeURIComponent(p.toLowerCase())).join('/')}`;
+}
+
+/** A Forever character's public profile path from its names, for when Blizzard sends no link. */
+const namePath = (name, surname) => `/profile/wow/character/${encodeURIComponent(`${name}-${surname}`.toLowerCase())}`;
+
+/** "First Surname", or just the name for characters without a surname. */
+const fullName = (c) => [c?.name, c?.surname].filter(Boolean).join(' ');
+
+/** One character from the account profile. */
 function character(c) {
+  const ids = protectedIds(c?.protected_character?.href);
+  const name = text(c?.name);
+  const surname = text(c?.surname) || null;
   return {
-    id: c?.id != null ? String(c.id) : null,
-    name: text(c?.name),
+    id: c?.id != null ? String(c.id) : ids?.characterId || null,
+    name,
+    surname,
     realm: text(c?.realm?.name) || c?.realm?.slug || null,
     realmSlug: c?.realm?.slug || slugFromHref(c?.key?.href) || null,
+    realmId: c?.realm?.id != null ? String(c.realm.id) : ids?.realmId || null,
+    path: pathFromHref(c?.character?.href) || pathFromHref(c?.key?.href) || (name && surname ? namePath(name, surname) : null),
     level: Number(c?.level) || 0,
     class: text(c?.playable_class?.name),
     race: text(c?.playable_race?.name),
@@ -194,6 +236,7 @@ function mergeCharacters(prev, next, now) {
       ...c,
       realm: c.realm || was.realm || null,
       realmSlug: c.realmSlug || was.realmSlug || null,
+      path: c.path || was.path || null,
       level,
       levelAt: level === was.level ? (was.levelAt || now) : now,
     };
@@ -226,7 +269,8 @@ async function foreverCharacters(token) {
         .map(character)
         .filter((c) => c.name)
         .sort((a, b) => b.level - a.level);
-      console.log(`[Battle.net] ${namespace} answered with ${characters.length} character(s).`);
+      console.log(`[Battle.net] ${namespace} answered with ${characters.length} character(s)`
+        + `${characters.length ? `, highest ${fullName(characters[0])} at ${characters[0].level}` : ''}.`);
       return { namespace, characters };
     } catch (err) {
       const status = err.response?.status;
@@ -333,7 +377,7 @@ const ts = (iso) => `<t:${Math.floor(new Date(iso).getTime() / 1000)}:R>`;
 
 function characterLine(c) {
   const what = [c.level ? `${c.level}` : null, c.race, c.class].filter(Boolean).join(' ');
-  return `**${c.name}**${what ? ` · ${what}` : ''}${c.realm ? ` · ${c.realm}` : ''}`;
+  return `**${fullName(c)}**${what ? ` · ${what}` : ''}${c.realm ? ` · ${c.realm}` : ''}`;
 }
 
 function profileEmbed(entry, user) {
@@ -348,7 +392,7 @@ function profileEmbed(entry, user) {
     name: 'WoW Forever characters',
     value: chars.length
       ? chars.slice(0, 10).map(characterLine).join('\n') + (chars.length > 10 ? `\n…and ${chars.length - 10} more` : '')
-      : 'None readable yet. Blizzard has not opened Forever\'s characters to its API; `/wow link` again once it has.',
+      : 'None found yet. Blizzard lists a character once it has been played and logged out; `/wow link` again after that.',
   });
   return embed.setFooter({ text: `Updated ${new Date(entry.updatedAt).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC' })} UTC` });
 }
@@ -377,7 +421,7 @@ async function friendsEmbed(guild) {
   }
   const lines = rows.slice(0, FRIENDS_SHOWN).map(([id, e]) => {
     const main = e.characters?.[0];
-    return `<@${id}> · \`${e.battletag}\`${main ? ` · ${main.name} (${main.level})` : ''}`;
+    return `<@${id}> · \`${e.battletag}\`${main ? ` · ${fullName(main)} (${main.level})` : ''}`;
   });
   if (rows.length > FRIENDS_SHOWN) lines.push(`…and ${rows.length - FRIENDS_SHOWN} more`);
   return embed
@@ -430,8 +474,11 @@ module.exports = {
   failure,
   OAUTH_HOST,
   COLOR,
+  fullName,
+  namePath,
   // For tests.
   character,
   mergeCharacters,
   namespacesToTry,
+  pathFromHref,
 };

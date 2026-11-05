@@ -3,10 +3,15 @@
  * The race to 60 in World of Warcraft: Forever, from the characters people
  * linked with /wow link (services/battlenet.js).
  *
- * Every POLL_MINUTES each linked character's level is read from Blizzard's
- * character profile with the bot's own app token (client credentials), so
- * nobody has to link again for their level to move. A member's place is their
- * highest character.
+ * Every POLL_MINUTES each linked character's level is read from its public
+ * character profile (the `path` battlenet.js keeps) with the bot's own app
+ * token (client credentials), so nobody has to link again for their level to
+ * move. A member's place is their highest character.
+ *
+ * As of 2026-11-05 Blizzard answers those with 404 for every Forever
+ * character, so until it opens them a level moves only when its owner runs
+ * /wow link again. Nothing needs changing when it does: the next check reads
+ * them, and the log says so once.
  *
  * In each guild with the `wow` feature and a `wow.channel`:
  *   - each time a member's best character passes 10, 20, 30, 40 or 50, it is
@@ -19,12 +24,6 @@
  * What a member had reached when the board first saw them is not announced:
  * someone linking at 34 gets no posts for 10, 20 and 30. Nobody is pinged
  * except the first to 60.
- *
- * Realms: before launch, Blizzard sent Forever characters with no realm, and a
- * character profile can't be read without one. For those, once Blizzard lists
- * Forever's realms, each realm is tried for the name and the one whose
- * character has the same ID is kept. A character is looked for at most every
- * REALM_RETRY_HOURS, and only while there are no more than MAX_REALMS realms.
  */
 const axios = require('axios');
 const { EmbedBuilder } = require('discord.js');
@@ -37,14 +36,11 @@ const { scrub } = require('../ai/actions');
 const { runAction } = require('../ai/executors');
 
 const MINUTE_MS = 60 * 1000;
-const HOUR_MS = 60 * MINUTE_MS;
 const POLL_MINUTES = 10;
 const MAX_LEVEL = 60;
 const MILESTONES = [10, 20, 30, 40, 50, 60];
 /** A member's highest characters followed, at most. */
 const CHARACTERS_PER_MEMBER = 10;
-const REALM_RETRY_HOURS = 3;
-const MAX_REALMS = 60;
 const DEFAULT_TITLE = 'The Mad God\'s Champion';
 const STATE_KEY = 'wowRace';
 /** Rows on /wow race. */
@@ -119,34 +115,23 @@ async function api(path, namespace) {
   return data;
 }
 
-const profilePath = (slug, name) =>
-  `/profile/wow/character/${encodeURIComponent(slug)}/${encodeURIComponent(String(name).toLowerCase())}`;
-
-/** Realm lists by namespace: { slugs, at }. A missing list is asked for again after half an hour. */
-const realmCache = new Map();
-
-/** Forever's realm slugs, or null while Blizzard doesn't list them. */
-async function realmSlugs(profileNamespace) {
-  const namespace = profileNamespace.replace(/^profile-/, 'dynamic-');
-  const cached = realmCache.get(namespace);
-  if (cached && Date.now() - cached.at < (cached.slugs ? HOUR_MS : 30 * MINUTE_MS)) return cached.slugs;
-  let slugs = null;
-  try {
-    const data = await api('/data/wow/realm/index', namespace);
-    slugs = (data?.realms || []).map((r) => r.slug).filter(Boolean);
-    if (!slugs.length) slugs = null;
-  } catch (err) {
-    if (err.response?.status !== 404) console.warn(`[WowRace] Realm list (${namespace}): ${battlenet.failure(err)}`);
-  }
-  realmCache.set(namespace, { slugs, at: Date.now() });
-  return slugs;
+/**
+ * Where a character's public profile is: the link Blizzard sent with it, else
+ * built from its names. Null for characters linked before launch, which were
+ * kept without either; their owner's next /wow link replaces them.
+ */
+function lookupPath(c) {
+  if (c.path) return c.path;
+  if (c.realmSlug) return `/profile/wow/character/${encodeURIComponent(c.realmSlug)}/${encodeURIComponent(String(c.name).toLowerCase())}`;
+  if (c.surname) return battlenet.namePath(c.name, c.surname);
+  return null;
 }
 
 /** The fields worth keeping from a character profile. */
-function fromProfile(data, slug) {
+function fromProfile(data) {
   return {
     level: Number(data?.level) || 0,
-    realmSlug: data?.realm?.slug || slug,
+    realmSlug: data?.realm?.slug || null,
     realm: (typeof data?.realm?.name === 'string' && data.realm.name) || null,
     class: (typeof data?.character_class?.name === 'string' && data.character_class.name) || null,
     race: (typeof data?.race?.name === 'string' && data.race.name) || null,
@@ -154,38 +139,24 @@ function fromProfile(data, slug) {
 }
 
 /**
- * What changed about one character, or null if nothing could be learned.
- * A character with no realm is looked for on each of Forever's realms.
+ * Whether Blizzard is answering character lookups: null until a check has run,
+ * then true or false. Only for the log line and the footer on /wow race.
  */
+let answering = null;
+
+/** What changed about one character: a patch, { missing } on a 404, or null when it has nowhere to look. */
 async function checkCharacter(c, namespace) {
+  const where = lookupPath(c);
+  if (!where) return null;
   const now = iso();
-  if (!c.realmSlug) {
-    // Without the character's ID, a same-named stranger on another realm
-    // would pass for them. Links made before IDs were kept need a re-link.
-    if (!c.id) return null;
-    if (c.realmTriedAt && Date.now() - new Date(c.realmTriedAt).getTime() < REALM_RETRY_HOURS * HOUR_MS) return null;
-    const slugs = await realmSlugs(namespace);
-    if (!slugs) return null;
-    if (slugs.length > MAX_REALMS) return { realmTriedAt: now };
-    for (const slug of slugs) {
-      try {
-        const data = await api(profilePath(slug, c.name), namespace);
-        // A name can be taken on several realms; only the same character counts.
-        if (c.id && String(data?.id) !== c.id) continue;
-        console.log(`[WowRace] Found ${c.name} on ${slug}.`);
-        return { ...fromProfile(data, slug), checkedAt: now };
-      } catch (err) {
-        if (err.response?.status !== 404) throw err;
-      }
-    }
-    return { realmTriedAt: now };
-  }
   try {
-    const data = await api(profilePath(c.realmSlug, c.name), namespace);
-    return { ...fromProfile(data, c.realmSlug), checkedAt: now };
+    const data = await api(where, namespace);
+    // Names can change hands; a different character there is not this one.
+    if (c.id && data?.id != null && String(data.id) !== c.id) return { checkedAt: now, missing: true };
+    return { ...fromProfile(data), checkedAt: now };
   } catch (err) {
-    // Renamed, moved or deleted: kept as it was until a re-link says otherwise.
-    if (err.response?.status === 404) return { checkedAt: now };
+    // Not opened yet, renamed or deleted: kept as it was until a re-link says otherwise.
+    if (err.response?.status === 404) return { checkedAt: now, missing: true };
     throw err;
   }
 }
@@ -194,6 +165,8 @@ async function checkCharacter(c, namespace) {
 async function refreshLevels() {
   const links = battlenet.allLinks();
   const found = [];
+  let tried = 0;
+  let read = 0;
   for (const [userId, link] of Object.entries(links)) {
     if (!link.namespace) continue;
     const followed = [...(link.characters || [])]
@@ -203,11 +176,23 @@ async function refreshLevels() {
     for (const c of followed) {
       try {
         const patch = await checkCharacter(c, link.namespace);
-        if (patch) found.push({ userId, id: c.id, name: c.name, patch });
+        if (!patch) continue;
+        tried += 1;
+        // A 404 changes nothing, so it isn't written: the file stays still between level-ups.
+        const { missing, ...rest } = patch;
+        if (missing) continue;
+        read += 1;
+        found.push({ userId, id: c.id, name: c.name, patch: rest });
       } catch (err) {
-        console.warn(`[WowRace] ${c.name}: ${battlenet.failure(err)}`);
+        console.warn(`[WowRace] ${battlenet.fullName(c)}: ${battlenet.failure(err)}`);
       }
     }
+  }
+  if (tried) {
+    const now = read > 0;
+    if (now && answering !== true) console.log(`[WowRace] Blizzard answers Forever character lookups: read ${read} of ${tried}.`);
+    if (!now && answering === null) console.log(`[WowRace] Blizzard does not answer Forever character lookups yet (${tried} tried); levels move on /wow link.`);
+    answering = now;
   }
   if (!found.length) return 0;
 
@@ -242,7 +227,7 @@ async function crownLine(guild, userId, c) {
   const member = await guild.members.fetch(userId).catch(() => null);
   const name = member?.displayName || 'A mortal';
   const prompt = `${name} is the first in this server to reach level 60 in World of Warcraft: Forever, `
-    + `on ${c.name}${whatTheyAre(c) ? `, a ${whatTheyAre(c)}` : ''}. In one or two short sentences, in character: `
+    + `on ${battlenet.fullName(c)}${whatTheyAre(c) ? `, a ${whatTheyAre(c)}` : ''}. In one or two short sentences, in character: `
     + 'crown them. Playful, never cruel. Use their name as written, no @ mentions, no action tags.';
   const text = await getAIResponse(prompt, { rawSystemPrompt: conversationalPersona(), maxTokens: 150, guildId: guild.id });
   return scrub(text || '').replace(/[ \t]{2,}/g, ' ').trim() || null;
@@ -295,7 +280,7 @@ async function announce(client) {
       if (!state.finishers.includes(p.userId)) state.finishers.push(p.userId);
       p.place = state.finishers.indexOf(p.userId) + 1;
       if (!state.first) {
-        state.first = { userId: p.userId, name: p.best.name, at: iso() };
+        state.first = { userId: p.userId, name: battlenet.fullName(p.best), at: iso() };
         p.first = true;
       }
     }
@@ -310,14 +295,14 @@ async function announce(client) {
     }
     for (const p of posts) {
       await post(channel, guild, p).catch((err) =>
-        console.warn(`[WowRace] ${guildId}: could not post ${p.best.name} at ${p.milestone}: ${err?.message || err}`));
+        console.warn(`[WowRace] ${guildId}: could not post ${battlenet.fullName(p.best)} at ${p.milestone}: ${err?.message || err}`));
     }
   }
 }
 
 async function post(channel, guild, { userId, best, milestone, place, first }) {
   const what = whatTheyAre(best);
-  const who = `<@${userId}>'s **${best.name}**`;
+  const who = `<@${userId}>'s **${battlenet.fullName(best)}**`;
 
   if (first) {
     const title = titleFor(guild.id);
@@ -363,15 +348,17 @@ async function raceEmbed(guild) {
   const medals = ['🥇', '🥈', '🥉'];
   const lines = rows.slice(0, SHOWN).map((r, i) => {
     const what = whatTheyAre(r.best);
-    return `${medals[i] || `**${i + 1}.**`} <@${r.id}> · **${r.best.name}** ${r.best.level || 1}`
+    return `${medals[i] || `**${i + 1}.**`} <@${r.id}> · **${battlenet.fullName(r.best)}** ${r.best.level || 1}`
       + `${what ? ` · ${what}` : ''}${first?.userId === r.id ? ' 👑' : ''}`;
   });
   if (rows.length > SHOWN) lines.push(`…and ${rows.length - SHOWN} more`);
   embed.setDescription(lines.join('\n'));
 
-  const unplaced = rows.reduce((n, r) => n + (links[r.id].characters || []).filter((c) => c.name && !c.realmSlug).length, 0);
-  const notes = [`Levels are checked every ${POLL_MINUTES} minutes. Made a new character? /wow link again.`];
-  if (unplaced) notes.push(`${unplaced} character(s) have no realm yet; they're followed once Blizzard lists Forever's realms.`);
+  const stale = rows.filter((r) => (links[r.id].characters || []).some((c) => c.name && !lookupPath(c))).length;
+  const notes = [answering === true
+    ? `Levels are checked every ${POLL_MINUTES} minutes. Made a new character? /wow link again.`
+    : 'Blizzard doesn\'t share Forever levels yet: yours updates when you /wow link, and by itself once Blizzard does.'];
+  if (stale) notes.push('Linked before launch? /wow link again to show your real level.');
   return embed.setFooter({ text: notes.join(' ') });
 }
 
