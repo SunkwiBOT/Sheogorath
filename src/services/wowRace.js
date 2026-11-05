@@ -8,10 +8,11 @@
  * token (client credentials), so nobody has to link again for their level to
  * move. A member's place is their highest character.
  *
- * As of 2026-11-05 Blizzard answers those with 404 for every Forever
- * character, so until it opens them a level moves only when its owner runs
- * /wow link again. Nothing needs changing when it does: the next check reads
- * them, and the log says so once.
+ * Blizzard answers 404 for a character it doesn't publish: on 2026-11-05 a
+ * level 11 one was read and level 1 ones were not, so as on retail, a
+ * character seems to be followed from level 10. Below that, its level moves
+ * when its owner runs /wow link again. The log says when lookups start or
+ * stop answering at all.
  *
  * In each guild with the `wow` feature and a `wow.channel`:
  *   - each time a member's best character passes 10, 20, 30, 40 or 50, it is

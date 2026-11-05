@@ -26,8 +26,9 @@
  * Forever characters have a first name and a surname and no realm. Each comes
  * with its own public profile link (/profile/wow/character/{name}-{surname}),
  * kept as `path` for services/wowRace.js, and a protected-character link whose
- * id is {realmId}-{characterId}. As of 2026-11-05 Blizzard answers 404 to both
- * for everyone, so a level only moves when its owner links again.
+ * id is {realmId}-{characterId}. On 2026-11-05 the public link answered for a
+ * level 11 character and 404 for level 1 ones, so like retail, Blizzard seems
+ * to publish a character from level 10.
  */
 const crypto = require('crypto');
 const path = require('path');
