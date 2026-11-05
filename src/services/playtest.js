@@ -58,13 +58,14 @@ function buildMessage(guildId) {
 function buildDownloadsMessage(guildId) {
   const cfg = configFor(guildId);
   if (!cfg?.downloads?.files.length) return null;
+  const notes = getGuildConfig(guildId)?.changelog?.channel;
   const embed = new EmbedBuilder()
     .setColor(TEAL)
     .setTitle(`⬇️ Get ${cfg.game}`)
     .setDescription(
       'Press the button for your computer: you get the download link, and where to put the game.\n\n' +
-      'You only download it once: the game updates itself to the newest build every time it starts, and each ' +
-      'new build is announced below. ' +
+      'You only download it once: the game updates itself to the newest build every time it starts' +
+      (notes ? `, and what is new goes in the patch notes in <#${notes}> each evening. ` : '. ') +
       'The first time it opens, the game asks you to sign its NDA, with Steam running.\n\n' +
       'The link never changes and always gets the newest build, so you can keep it. It is for the test group ' +
       'only: anyone else who wants to play joins' + (cfg.post ? ` in <#${cfg.post}>.` : ' the playtest first.')
@@ -238,27 +239,4 @@ async function assetInfo(dl, name) {
   }
 }
 
-/**
- * Keeps one build notice in the downloads channel: when a webhook posts there
- * (the game's build workflow saying a new build is up), the earlier posts from
- * that same webhook are deleted, so the channel says only what is current.
- * Interaction replies come through the bot's own application webhook and are
- * left alone.
- */
-function watchBuildNotices(client) {
-  client.on('messageCreate', async (message) => {
-    if (!message.webhookId || !message.guildId || message.webhookId === message.client.application?.id) return;
-    const channel = configFor(message.guildId)?.downloads?.channel;
-    if (!channel || message.channelId !== channel) return;
-    try {
-      const earlier = await message.channel.messages.fetch({ before: message.id, limit: 50 });
-      for (const old of earlier.values()) {
-        if (old.webhookId === message.webhookId) await old.delete();
-      }
-    } catch (err) {
-      console.warn(`[Playtest] ${message.guild?.name}: could not clear the old build notices: ${err?.message || err}`);
-    }
-  });
-}
-
-module.exports = { isPlaytestButton, handleButton, buildMessage, buildDownloadsMessage, watchBuildNotices };
+module.exports = { isPlaytestButton, handleButton, buildMessage, buildDownloadsMessage };

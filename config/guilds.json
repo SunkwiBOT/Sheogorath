@@ -396,6 +396,12 @@
         "1560045636383023158"
       ]
     },
+    "changelog": {
+      "repo": "bjmcallister/grime-builds",
+      "tag": "latest-build",
+      "channel": "1560045622956920904",
+      "hour": 18
+    },
     "gameNews": {
       "steamApps": [],
       "channel": "1560045622956920904",

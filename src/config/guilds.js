@@ -264,6 +264,17 @@ function normalizeGuild(id, raw) {
     // season launch) as scheduled events (services/gameNews.js). An event with
     // no `voiceChannel` is External, and Discord then needs `location` and an
     // end, so `hours` defaults to 4.
+    // The game's patch notes (services/changelog.js): each build's "What's new"
+    // lines, read from the public `repo`'s release `tag` (the one the game
+    // updates itself from), gathered over the day and posted once a day in
+    // `channel` at `hour` o'clock in the guild's time zone.
+    changelog: raw.changelog && /^[\w.-]+\/[\w.-]+$/.test(String(raw.changelog.repo || ''))
+      && SNOWFLAKE.test(String(raw.changelog.channel || '')) ? {
+      repo: String(raw.changelog.repo),
+      tag: typeof raw.changelog.tag === 'string' && raw.changelog.tag ? raw.changelog.tag : 'latest-build',
+      channel: String(raw.changelog.channel),
+      hour: Number.isInteger(raw.changelog.hour) && raw.changelog.hour >= 0 && raw.changelog.hour <= 23 ? raw.changelog.hour : 18,
+    } : null,
     gameNews: raw.gameNews && typeof raw.gameNews === 'object' && raw.gameNews.channel ? {
       channel: raw.gameNews.channel,
       // Where a new event's link is posted. Defaults to the news channel.

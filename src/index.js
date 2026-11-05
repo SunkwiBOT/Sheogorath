@@ -40,12 +40,13 @@ const { isSexualizedTextImage } = require('./services/textImageMod');
 const { trackCommand } = require('./commands/stats');
 const { onGuildMemberAdd, onGuildMemberUpdate } = require('./services/autorole');
 const { isSelfRoleButton, handleButton: handleSelfRoleButton } = require('./services/selfroles');
-const { isPlaytestButton, handleButton: handlePlaytestButton, watchBuildNotices } = require('./services/playtest');
+const { isPlaytestButton, handleButton: handlePlaytestButton } = require('./services/playtest');
 const { watchOwnPosts } = require('./services/autopublish');
 const { scheduleStreamWatch } = require('./services/twitch');
 const { scheduleVideoWatch } = require('./services/youtube');
 const { scheduleUfcEvents } = require('./services/ufc');
 const { scheduleGameNews } = require('./services/gameNews');
+const { scheduleChangelog } = require('./services/changelog');
 const { scheduleWardogsGold } = require('./services/wardogsGold');
 const { scheduleWardogsPlayers } = require('./services/wardogsPlayers');
 const { scheduleWowRace } = require('./services/wowRace');
@@ -169,7 +170,6 @@ client.once(Events.ClientReady, async () => {
   // lazily on the first question about it: by the time somebody asks what was
   // removed, the only record is the one we were already keeping.
   watchDeletions(client);
-  watchBuildNotices(client);
   watchOwnPosts(client);
 
   // Spend warnings go to the owner by DM, and nowhere else. The budget is one
@@ -244,6 +244,13 @@ client.once(Events.ClientReady, async () => {
     scheduleGameNews(client);
   } catch (err) {
     console.error('[GameNews] Failed to schedule game news:', err?.message || err);
+  }
+
+  // The game's patch notes, gathered from each build and posted once a day.
+  try {
+    scheduleChangelog(client);
+  } catch (err) {
+    console.error('[Changelog] Failed to schedule the patch notes:', err?.message || err);
   }
 
   // The WARDOGS gold bar price, posted each day it moves.
