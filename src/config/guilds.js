@@ -191,8 +191,9 @@ function normalizeGuild(id, raw) {
     // The playtest (services/playtest.js): the role its agreement button gives,
     // the testers' channel that role opens, the private channel each agreement
     // and download is recorded in, and where scripts/post-playtest.js posts the
-    // button. `downloads` is the GitHub release (`repo`, `tag`) the testers'
-    // download buttons hand out, the channel they are posted in, and one entry
+    // button. `downloads` is the GitHub release (`repo`, `tag`: a public repo,
+    // the same release the game updates itself from) the testers' download
+    // buttons link to, the channel they are posted in, and one entry
     // per button: its `label`, `emoji`, the release `asset` and `how` to start
     // it. Absent means no playtest here; only the role is required.
     playtest: raw.playtest && SNOWFLAKE.test(String(raw.playtest.role || '')) ? {

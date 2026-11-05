@@ -10,12 +10,13 @@
  * side by side. It only ever grants. Taking a tester out is done by hand, by
  * taking the role off.
  *
- * A download button answers, to that tester alone, with a link to the build
- * from the GitHub release in `playtest.downloads` (a private repo, read with
- * GITHUB_DOWNLOADS_TOKEN). The link is GitHub's own signed one and lapses within
- * the hour, so a forwarded link is soon worth nothing, and the button always
- * hands out whatever was built last. Only someone holding the role gets one:
- * the button is in their channel, but the role is checked anyway.
+ * A download button answers, to that tester alone, with the link to their
+ * platform's build on the GitHub release in `playtest.downloads`: the public
+ * builds repo the game updates itself from. The release is re-made under the
+ * same tag for every build, so the link never changes and always gets the
+ * newest build, and no key is needed. The button is still there, rather than a
+ * plain link, so it can check the role (the button is in their channel, but
+ * the role is checked anyway), say how to start it, and log the download.
  *
  * No button carries a role ID or a file name. A download button carries an
  * index into config, and the agreement button nothing at all, so a crafted
@@ -41,10 +42,10 @@ function buildMessage(guildId) {
     .setColor(TEAL)
     .setTitle(`🔒 ${cfg.game} playtest`)
     .setDescription(
-      `${cfg.game} is not out yet, so everything in ${channelOf(cfg)} is confidential.\n\n` +
+      `${cfg.game} is not out yet, so everything in the playtest channels, starting with ${channelOf(cfg)}, is confidential.\n\n` +
       'Press **I agree** to confirm you will not share, stream, post or talk about the game, its builds, ' +
-      'screenshots, or anything from that channel with anyone outside the test group, and that you will ' +
-      'sign the NDA in the game when you first open it. The channel opens to you straight away.' +
+      'screenshots, or anything from those channels with anyone outside the test group, and that you will ' +
+      'sign the NDA in the game when you first open it. The channels open to you straight away.' +
       (cfg.limit ? `\n\nThere are **${cfg.limit} places**, first come, first served.` : '')
     );
   const row = new ActionRowBuilder().addComponents(
@@ -61,11 +62,12 @@ function buildDownloadsMessage(guildId) {
     .setColor(TEAL)
     .setTitle(`⬇️ Get ${cfg.game}`)
     .setDescription(
-      'Press the button for your computer for the newest build. The link you get is yours alone and stops ' +
-      'working within the hour, so do not pass it on: anyone who needs the game gets it here.\n\n' +
+      'Press the button for your computer: you get the download link, and where to put the game.\n\n' +
       'You only download it once: the game updates itself to the newest build every time it starts, and each ' +
       'new build is announced below. ' +
-      'The first time it opens, the game asks you to sign its NDA, with Steam running.'
+      'The first time it opens, the game asks you to sign its NDA, with Steam running.\n\n' +
+      'The link never changes and always gets the newest build, so you can keep it. It is for the test group ' +
+      'only: anyone else who wants to play joins' + (cfg.post ? ` in <#${cfg.post}>.` : ' the playtest first.')
     );
   const row = new ActionRowBuilder().addComponents(
     cfg.downloads.files.map((f, i) => {
@@ -193,41 +195,46 @@ async function handleDownload(interaction, cfg) {
     });
     return;
   }
-  const token = process.env.GITHUB_DOWNLOADS_TOKEN;
-  if (!token) {
-    console.warn('[Playtest] A download was asked for, but GITHUB_DOWNLOADS_TOKEN is not set.');
-    await interaction.reply({ content: 'Downloads are not set up yet. Tell an admin.', ephemeral: true });
+  await interaction.deferReply({ ephemeral: true });
+  const link = `https://github.com/${dl.repo}/releases/download/${encodeURIComponent(dl.tag)}/${encodeURIComponent(file.asset)}`;
+  const asset = await assetInfo(dl, file.asset);
+  if (asset === MISSING) {
+    // The release is deleted and made again for each build, so for a few seconds there is none.
+    await interaction.editReply('A new build is going up right now. Press the button again in a minute.');
     return;
   }
+  const built = asset ? Math.floor(new Date(asset.created_at).getTime() / 1000) : null;
 
-  await interaction.deferReply({ ephemeral: true });
+  await interaction.editReply(
+    `**[Download ${cfg.game} for ${file.label}](${link})**` +
+    (asset ? ` (${Math.round(asset.size / 1048576)} MB, built <t:${built}:R>)` : '') + '\n' +
+    (file.how ? `${file.how}\n` : '') +
+    '\nYou only need it once: the game updates itself every time it starts. The link never changes, ' +
+    'so you can keep it, but keep it to the test group.'
+  );
+  await record(interaction, cfg, `⬇️ <@${interaction.member.id}> (**${interaction.member.user.username}**) downloaded the ` +
+    `${file.label} build${built ? ` (built <t:${built}:f>)` : ''}.`);
+}
+
+const MISSING = Symbol('missing');
+
+/**
+ * The asset's size and upload time, from GitHub's public API (no key: the repo
+ * is public). Only for show, so a GitHub that does not answer costs nothing but
+ * those two (null); MISSING means the release answered without that file.
+ */
+async function assetInfo(dl, name) {
   try {
-    const headers = {
-      Authorization: `Bearer ${token}`,
-      Accept: 'application/vnd.github+json',
-      'X-GitHub-Api-Version': '2022-11-28',
-      'User-Agent': 'Sheogorath',
-    };
-    const rel = await fetch(`https://api.github.com/repos/${dl.repo}/releases/tags/${encodeURIComponent(dl.tag)}`, { headers });
-    if (!rel.ok) throw new Error(`release ${dl.tag}: HTTP ${rel.status}`);
-    const asset = (await rel.json()).assets.find((a) => a.name === file.asset);
-    if (!asset) throw new Error(`no ${file.asset} in ${dl.tag}`);
-    // The asset itself answers with a redirect to a short-lived signed URL: that is the link handed out, unread.
-    const res = await fetch(asset.url, { headers: { ...headers, Accept: 'application/octet-stream' }, redirect: 'manual' });
-    const link = res.headers.get('location');
-    if (!link) throw new Error(`${file.asset}: HTTP ${res.status} and no redirect`);
-    const built = Math.floor(new Date(asset.created_at).getTime() / 1000);
-
-    await interaction.editReply(
-      `**[Download ${cfg.game} for ${file.label}](${link})** (${Math.round(asset.size / 1048576)} MB, built <t:${built}:R>)\n` +
-      (file.how ? `${file.how}\n` : '') +
-      '\nThis link is just for you and stops working within the hour. Press the button again for a fresh one.'
-    );
-    await record(interaction, cfg, `⬇️ <@${interaction.member.id}> (**${interaction.member.user.username}**) downloaded the ` +
-      `${file.label} build (built <t:${built}:f>).`);
+    const res = await fetch(`https://api.github.com/repos/${dl.repo}/releases/tags/${encodeURIComponent(dl.tag)}`, {
+      headers: { Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28', 'User-Agent': 'Sheogorath' },
+      signal: AbortSignal.timeout(5000),
+    });
+    if (res.status === 404) return MISSING;
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return (await res.json()).assets.find((a) => a.name === name) || MISSING;
   } catch (err) {
-    console.warn(`[Playtest] ${interaction.guild.name}: download of ${file.asset} failed: ${err?.message || err}`);
-    await interaction.editReply('I could not fetch the build just now. Try again in a minute, or tell an admin.');
+    console.warn(`[Playtest] Could not read the ${dl.tag} release of ${dl.repo}: ${err?.message || err}`);
+    return null;
   }
 }
 

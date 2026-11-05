@@ -24,7 +24,9 @@ const TEAL = 0x3fbfb0;
 
 const RULES = {
   title: 'Grime & Punishment: the rules',
-  intro: 'Short version: be someone people are glad to see. Moderators read reports and act on them.',
+  // Reports go to the Developers: nobody holds Moderator yet, so pinging it reaches no one. Name it again here
+  // once someone does.
+  intro: 'Short version: be someone people are glad to see. The developers read reports and act on them.',
   fields: [
     ['1. Be decent',
       'No harassment, slurs, bigotry or sexual content. Banter is fine; **if someone asks you to drop it, drop it.**'],
@@ -37,11 +39,11 @@ const RULES = {
     ['5. Bugs go in the bug reports',
       'Testers: one post per bug in the playtest-bugs forum, with what happened, what you expected and which build you have.'],
     ['6. Sheogorath is a bot',
-      'He answers to his name and speaks unprompted in <#CHAN_HELP>. He does not read the testers\' channels. Anything that matters goes to a **@Moderator** or a **@Developer**, not to him.'],
+      'He answers to his name and speaks unprompted in <#CHAN_HELP>. He does not read the testers\' channels. Anything that matters goes to a **@Developer**, not to him.'],
     ['7. Discord\'s own rules apply',
       '13 or older, nothing illegal, and no second account to get round a removal.'],
     ['Reporting',
-      'Ping a **@Moderator** in <#CHAN_HELP>, or DM a Developer. Say who and roughly when.'],
+      'Ping a **@Developer** in <#CHAN_HELP>, or DM one. Say who and roughly when.'],
   ],
 };
 
@@ -57,8 +59,12 @@ const ABOUT = {
     'Miss the rent and it\'s the dungeon. Pay off the King\'s fine and he comes in person to pardon you, ' +
     'if you can keep your hands out of his pockets while he\'s there.',
   fields: [
+    // The date and the plan are the ones Billy announced in #announcements on 2026-11-03. Sheogorath gives no date
+    // he doesn't read here, so change them together.
     ['Where to get it',
-      'It\'s coming to **Steam**, for Windows, Mac and Linux. It isn\'t out yet; news comes first in <#CHAN_ANNOUNCEMENTS>.'],
+      'It\'s coming to **Steam** in Early Access, for Windows, Mac and Linux, aimed at **July 2027**. Dates may move; news comes first in <#CHAN_ANNOUNCEMENTS>.'],
+    ['What\'s next',
+      'The washhouse learns to run itself, then you take over the smithy, the tavern and a fishing hut, hire workers to run them, and keep robbing your customers blind. The stables, a farm and a guard post come after Early Access launches.'],
     ['Playing it early',
       'The game is in playtesting. Press the button in <#CHAN_JOIN>, agree to keep what you see to yourself, and the testers\' channels open to you, downloads included.'],
     ['Questions',
