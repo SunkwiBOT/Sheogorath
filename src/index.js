@@ -41,6 +41,7 @@ const { trackCommand } = require('./commands/stats');
 const { onGuildMemberAdd, onGuildMemberUpdate } = require('./services/autorole');
 const { isSelfRoleButton, handleButton: handleSelfRoleButton } = require('./services/selfroles');
 const { isPlaytestButton, handleButton: handlePlaytestButton } = require('./services/playtest');
+const { isFeedbackInteraction, handleFeedback } = require('./services/feedback');
 const { watchOwnPosts } = require('./services/autopublish');
 const { scheduleStreamWatch } = require('./services/twitch');
 const { scheduleVideoWatch } = require('./services/youtube');
@@ -636,6 +637,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if ((interaction.isButton() || interaction.isStringSelectMenu() || interaction.isModalSubmit())
       && isPanelInteraction(interaction)) {
       await handlePanelInteraction(interaction);
+      return;
+    }
+
+    // The playtest feedback form: its button, the button for each next page,
+    // and the forms themselves. Testers only, checked in the service.
+    if ((interaction.isButton() || interaction.isModalSubmit()) && isFeedbackInteraction(interaction)) {
+      await handleFeedback(interaction);
       return;
     }
 

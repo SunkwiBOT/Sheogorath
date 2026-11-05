@@ -443,7 +443,127 @@
         "1560045617206788120",
         "1560054572104556647",
         "1560045618284601516"
-      ]
+      ],
+      "feedback": {
+        "channel": "1560045632981438535",
+        "answers": "1567929780962328696",
+        "bugs": "1565374633677422682",
+        "title": "How was your night?",
+        "intro": "Thanks for playing! Be blunt: \"boring\" and \"confusing\" are the most useful words you can give us. Under NDA, like the game.",
+        "next": [
+          "bugs, what you'd pay, and (hosts) your play stats."
+        ],
+        "pages": [
+          [
+            {
+              "id": "again",
+              "label": "Play another night with the same crew?",
+              "type": "choice",
+              "required": true,
+              "options": [
+                "Yes, I'd ask to",
+                "Probably",
+                "Not sure",
+                "Probably not",
+                "No"
+              ]
+            },
+            {
+              "id": "why",
+              "label": "What would bring you back, or put you off?",
+              "type": "long",
+              "required": true,
+              "placeholder": "Be blunt: \"boring\" and \"confusing\" help us most."
+            },
+            {
+              "id": "best",
+              "label": "What was the best moment of the night?",
+              "type": "short"
+            },
+            {
+              "id": "bored",
+              "label": "When were you bored?",
+              "type": "multi",
+              "description": "Pick any, or none.",
+              "options": [
+                "The first morning, before opening",
+                "Scrubbing at the tubs",
+                "Folding",
+                "Waiting for customers",
+                "The night and the black market",
+                "Waiting for buyers",
+                "The day report",
+                "Once staff did the washing",
+                "Never",
+                "Other"
+              ]
+            },
+            {
+              "id": "lost",
+              "label": "When were you lost or not sure what to do?",
+              "type": "multi",
+              "description": "Pick any, or none.",
+              "options": [
+                "Installing or the NDA",
+                "Hosting, inviting or joining",
+                "Opening the shop",
+                "Washing, drying, folding",
+                "Rummaging pockets",
+                "Selling at night",
+                "Heat and the guards",
+                "Rent and money",
+                "Hiring staff",
+                "The TOWN page and buying places",
+                "Never",
+                "Other"
+              ]
+            }
+          ],
+          [
+            {
+              "id": "steal",
+              "label": "Did stealing feel worth the risk?",
+              "type": "choice",
+              "options": [
+                "1: never worth it",
+                "2",
+                "3",
+                "4",
+                "5: always worth it"
+              ]
+            },
+            {
+              "id": "broke",
+              "label": "Did anything break, look wrong or crash?",
+              "type": "long",
+              "description": "Please post it in #playtest-bugs too, one post per bug."
+            },
+            {
+              "id": "like",
+              "label": "What other games did it remind you of?",
+              "type": "short"
+            },
+            {
+              "id": "pay",
+              "label": "In Early Access on Steam, what would you pay?",
+              "type": "choice",
+              "options": [
+                "Nothing, I'd wait",
+                "Under $10",
+                "$10 to $14",
+                "$15 to $19",
+                "$20 or more"
+              ]
+            },
+            {
+              "id": "stats",
+              "label": "Hosts: your playstats.txt",
+              "type": "file",
+              "description": "Settings, Open logs folder. Only the host needs to send it."
+            }
+          ]
+        ]
+      }
     },
     "youtube": {
       "channel": "1560045622956920904",

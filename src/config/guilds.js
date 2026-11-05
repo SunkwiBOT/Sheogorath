@@ -54,6 +54,49 @@ const FEATURES = [
 
 let cache = null;
 
+/**
+ * The playtest's feedback form (services/feedback.js), cut to what Discord
+ * takes: five questions to a page, a label of 45 characters, a description
+ * and placeholder of 100, 25 options of 100. A question needs an `id`, a
+ * `label` and a `type`: choice (pick one of `options`), multi (any of them),
+ * short or long (typed), or file (one upload). Null without a channel to post
+ * in, a channel for the answers, and at least one question.
+ */
+function normalizeFeedback(raw) {
+  if (!raw || !SNOWFLAKE.test(String(raw.channel || '')) || !SNOWFLAKE.test(String(raw.answers || ''))) return null;
+  const TYPES = ['choice', 'multi', 'short', 'long', 'file'];
+  const cut = (s, n) => (typeof s === 'string' && s.trim() ? s.trim().slice(0, n) : null);
+  const ids = new Set();
+  const pages = (Array.isArray(raw.pages) ? raw.pages : [])
+    .map((page) => (Array.isArray(page) ? page : [])
+      .filter((q) => q && /^[a-z0-9_]{1,40}$/.test(String(q.id || '')) && !ids.has(q.id) && ids.add(q.id)
+        && cut(q.label, 45) && TYPES.includes(q.type))
+      .map((q) => ({
+        id: q.id,
+        label: cut(q.label, 45),
+        description: cut(q.description, 100),
+        placeholder: cut(q.placeholder, 100),
+        type: q.type,
+        required: q.required === true && q.type !== 'file',
+        options: Array.isArray(q.options) ? [...new Set(q.options.map((o) => cut(String(o), 100)).filter(Boolean))].slice(0, 25) : [],
+      }))
+      .filter((q) => !['choice', 'multi'].includes(q.type) || q.options.length)
+      .slice(0, 5))
+    .filter((page) => page.length)
+    .slice(0, 5);
+  if (!pages.length) return null;
+  return {
+    channel: String(raw.channel),
+    answers: String(raw.answers),
+    bugs: SNOWFLAKE.test(String(raw.bugs || '')) ? String(raw.bugs) : null,
+    title: cut(raw.title, 38) || 'Feedback',
+    intro: cut(raw.intro, 1500) || '',
+    // What the button after each page says the next one holds.
+    next: Array.isArray(raw.next) ? raw.next.map((s) => cut(s, 200)) : [],
+    pages,
+  };
+}
+
 function normalizeGuild(id, raw) {
   const channels = raw.channels || {};
   const roles = raw.roles || {};
@@ -224,6 +267,8 @@ function normalizeGuild(id, raw) {
             how: typeof f.how === 'string' ? f.how : null,
           })),
       } : null,
+      // The feedback form: see normalizeFeedback.
+      feedback: normalizeFeedback(raw.playtest.feedback),
     } : null,
     // Twitch live announcements. Absent means the watcher skips this guild —
     // the credentials are global (one app, in .env) but who gets announced,
